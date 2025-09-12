@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Brain, Users, Shield, Zap, Activity, Database, ChevronRight, Eye, Settings, Play, LogOut, User, AlertTriangle, TrendingUp } from 'lucide-react';
 import { adminMonitoringSystem } from '../services/adminMonitoringSystem';
 import { realTimeAgentSystem } from '../services/realTimeAgentSystem';
+import AgentricAIChatBot from './AgentricAIChatBot';
 
 interface AdminDashboardProps {
   user: any;
@@ -651,414 +652,420 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
             </div>
           </div>
         )}
+      </main>
 
-        {/* Selected Student Details Modal */}
-        {selectedStudent && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-gray-900 border border-blue-400/50 rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-blue-400">Student Details</h3>
-                <button 
-                  onClick={() => setSelectedStudent(null)}
-                  className="text-gray-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
+      {/* AgentricAI Chat Bot */}
+      <AgentricAIChatBot 
+        userRole="admin" 
+        user={user} 
+      />
+      
+      {/* Selected Student Details Modal */}
+      {selectedStudent && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-blue-400/50 rounded-lg p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-blue-400">Student Details</h3>
+              <button 
+                onClick={() => setSelectedStudent(null)}
+                className="text-gray-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {(() => {
+              const student = activeStudents.find(s => s.userId === selectedStudent);
+              if (!student) return <div>Student not found</div>;
               
-              {(() => {
-                const student = activeStudents.find(s => s.userId === selectedStudent);
-                if (!student) return <div>Student not found</div>;
-                
-                return (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-gray-800/50 rounded border border-blue-400/20">
-                      <h4 className="text-blue-300 font-medium mb-2">{student.name}</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-gray-400">Progress:</span>
-                          <span className="text-green-400 ml-2">{Math.round(student.progressPercentage)}%</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Engagement:</span>
-                          <span className="text-blue-400 ml-2">{Math.round(student.engagementLevel * 100)}%</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Current Module:</span>
-                          <span className="text-white ml-2">{student.currentModule}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-400">Time Spent:</span>
-                          <span className="text-purple-400 ml-2">{Math.round(student.timeSpent / 60)} min</span>
-                        </div>
+              return (
+                <div className="space-y-4">
+                  <div className="p-4 bg-gray-800/50 rounded border border-blue-400/20">
+                    <h4 className="text-blue-300 font-medium mb-2">{student.name}</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-gray-400">Progress:</span>
+                        <span className="text-green-400 ml-2">{Math.round(student.progressPercentage)}%</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Engagement:</span>
+                        <span className="text-blue-400 ml-2">{Math.round(student.engagementLevel * 100)}%</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Current Module:</span>
+                        <span className="text-white ml-2">{student.currentModule}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Time Spent:</span>
+                        <span className="text-purple-400 ml-2">{Math.round(student.timeSpent / 60)} min</span>
                       </div>
                     </div>
-                    
-                    {student.strengths.length > 0 && (
-                      <div className="p-3 bg-green-900/20 rounded border border-green-400/20">
-                        <h5 className="text-green-400 font-medium mb-2">Strengths</h5>
-                        <ul className="text-sm text-green-300 space-y-1">
-                          {student.strengths.map((strength, index) => (
-                            <li key={index}>• {strength}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {student.challenges.length > 0 && (
-                      <div className="p-3 bg-yellow-900/20 rounded border border-yellow-400/20">
-                        <h5 className="text-yellow-400 font-medium mb-2">Areas for Support</h5>
-                        <ul className="text-sm text-yellow-300 space-y-1">
-                          {student.challenges.map((challenge, index) => (
-                            <li key={index}>• {challenge}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    <div className="p-3 bg-purple-900/20 rounded border border-purple-400/20">
-                      <h5 className="text-purple-400 font-medium mb-2">Active Adaptations</h5>
-                      <ul className="text-sm text-purple-300 space-y-1">
-                        {student.adaptations.map((adaptation, index) => (
-                          <li key={index}>• {adaptation}</li>
+                  </div>
+                  
+                  {student.strengths.length > 0 && (
+                    <div className="p-3 bg-green-900/20 rounded border border-green-400/20">
+                      <h5 className="text-green-400 font-medium mb-2">Strengths</h5>
+                      <ul className="text-sm text-green-300 space-y-1">
+                        {student.strengths.map((strength, index) => (
+                          <li key={index}>• {strength}</li>
                         ))}
                       </ul>
                     </div>
+                  )}
+                  
+                  {student.challenges.length > 0 && (
+                    <div className="p-3 bg-yellow-900/20 rounded border border-yellow-400/20">
+                      <h5 className="text-yellow-400 font-medium mb-2">Areas for Support</h5>
+                      <ul className="text-sm text-yellow-300 space-y-1">
+                        {student.challenges.map((challenge, index) => (
+                          <li key={index}>• {challenge}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  <div className="p-3 bg-purple-900/20 rounded border border-purple-400/20">
+                    <h5 className="text-purple-400 font-medium mb-2">Active Adaptations</h5>
+                    <ul className="text-sm text-purple-300 space-y-1">
+                      {student.adaptations.map((adaptation, index) => (
+                        <li key={index}>• {adaptation}</li>
+                      ))}
+                    </ul>
                   </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-
-        {/* Agent Control Modal */}
-        {showAgentModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-gray-900 border border-cyan-400/50 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-semibold text-cyan-400">Agent Control Center</h3>
-                <button 
-                  onClick={() => setShowAgentModal(false)}
-                  className="text-gray-400 hover:text-white text-xl"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {agentDetails.map((agent) => (
-                  <div key={agent.id} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-white">{agent.name}</h4>
-                      <div className={`w-3 h-3 rounded-full ${
-                        agent.status === 'active' ? 'bg-green-400 animate-pulse' :
-                        agent.status === 'processing' ? 'bg-yellow-400 animate-pulse' :
-                        'bg-gray-400'
-                      }`}></div>
-                    </div>
-                    
-                    <div className="space-y-2 text-sm mb-4">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Status:</span>
-                        <span className={`capitalize ${
-                          agent.status === 'active' ? 'text-green-400' :
-                          agent.status === 'processing' ? 'text-yellow-400' :
-                          'text-gray-400'
-                        }`}>{agent.status}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Tasks:</span>
-                        <span className="text-blue-400">{agent.tasks}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Efficiency:</span>
-                        <span className="text-green-400">{agent.efficiency}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Memory:</span>
-                        <span className="text-purple-400">{agent.memory}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Uptime:</span>
-                        <span className="text-cyan-400">{agent.uptime}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleAgentAction(agent.id, 'restart')}
-                        className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs py-2 px-3 rounded transition-colors"
-                      >
-                        Restart
-                      </button>
-                      {agent.status === 'active' ? (
-                        <button
-                          onClick={() => handleAgentAction(agent.id, 'pause')}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs py-2 px-3 rounded transition-colors"
-                        >
-                          Pause
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleAgentAction(agent.id, 'resume')}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 px-3 rounded transition-colors"
-                        >
-                          Resume
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="mt-6 pt-4 border-t border-gray-700">
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleSystemAction('restart-agents')}
-                    className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded transition-colors"
-                  >
-                    Restart All Agents
-                  </button>
-                  <button
-                    onClick={() => loadAgentDetails()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition-colors"
-                  >
-                    Refresh Status
-                  </button>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Student Monitoring Modal */}
-        {showStudentModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-gray-900 border border-blue-400/50 rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-semibold text-blue-400">Student Monitoring Center</h3>
-                <button 
-                  onClick={() => setShowStudentModal(false)}
-                  className="text-gray-400 hover:text-white text-xl"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                {activeStudents.map((student) => (
-                  <div key={student.userId} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-white">{student.name}</h4>
-                      {student.needsAttention && (
-                        <AlertTriangle className="h-4 w-4 text-yellow-400" />
-                      )}
+      {/* Agent Control Modal */}
+      {showAgentModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-cyan-400/50 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-semibold text-cyan-400">Agent Control Center</h3>
+              <button 
+                onClick={() => setShowAgentModal(false)}
+                className="text-gray-400 hover:text-white text-xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {agentDetails.map((agent) => (
+                <div key={agent.id} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-white">{agent.name}</h4>
+                    <div className={`w-3 h-3 rounded-full ${
+                      agent.status === 'active' ? 'bg-green-400 animate-pulse' :
+                      agent.status === 'processing' ? 'bg-yellow-400 animate-pulse' :
+                      'bg-gray-400'
+                    }`}></div>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm mb-4">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Status:</span>
+                      <span className={`capitalize ${
+                        agent.status === 'active' ? 'text-green-400' :
+                        agent.status === 'processing' ? 'text-yellow-400' :
+                        'text-gray-400'
+                      }`}>{agent.status}</span>
                     </div>
-                    
-                    <div className="space-y-2 text-sm mb-4">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Module:</span>
-                        <span className="text-blue-300">{student.currentModule}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Progress:</span>
-                        <span className="text-green-400">{Math.round(student.progressPercentage)}%</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Engagement:</span>
-                        <span className={`${
-                          student.engagementLevel > 0.8 ? 'text-green-400' :
-                          student.engagementLevel > 0.6 ? 'text-yellow-400' :
-                          'text-red-400'
-                        }`}>
-                          {Math.round(student.engagementLevel * 100)}%
-                        </span>
-                      </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Tasks:</span>
+                      <span className="text-blue-400">{agent.tasks}</span>
                     </div>
-                    
-                    <div className="flex space-x-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Efficiency:</span>
+                      <span className="text-green-400">{agent.efficiency}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Memory:</span>
+                      <span className="text-purple-400">{agent.memory}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Uptime:</span>
+                      <span className="text-cyan-400">{agent.uptime}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleAgentAction(agent.id, 'restart')}
+                      className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs py-2 px-3 rounded transition-colors"
+                    >
+                      Restart
+                    </button>
+                    {agent.status === 'active' ? (
                       <button
-                        onClick={() => handleStudentClick(student.userId)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded transition-colors"
+                        onClick={() => handleAgentAction(agent.id, 'pause')}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs py-2 px-3 rounded transition-colors"
                       >
-                        View Details
+                        Pause
                       </button>
+                    ) : (
                       <button
-                        onClick={() => showNotification(`Sent support message to ${student.name}`, 'info')}
+                        onClick={() => handleAgentAction(agent.id, 'resume')}
                         className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 px-3 rounded transition-colors"
                       >
-                        Send Support
+                        Resume
                       </button>
-                    </div>
+                    )}
                   </div>
-                ))}
-              </div>
-              
-              <div className="bg-gray-800/30 rounded-lg p-4">
-                <h4 className="text-lg font-medium text-blue-400 mb-3">Quick Actions</h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <button
-                    onClick={() => showNotification('Generated progress report for all students', 'success')}
-                    className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                  >
-                    Generate Report
-                  </button>
-                  <button
-                    onClick={() => showNotification('Sent encouragement messages to all active students', 'info')}
-                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                  >
-                    Send Encouragement
-                  </button>
-                  <button
-                    onClick={() => showNotification('Adjusted difficulty levels based on performance', 'success')}
-                    className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                  >
-                    Auto-Adjust Difficulty
-                  </button>
-                  <button
-                    onClick={() => showNotification('Exported student data for analysis', 'info')}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                  >
-                    Export Data
-                  </button>
                 </div>
+              ))}
+            </div>
+            
+            <div className="mt-6 pt-4 border-t border-gray-700">
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => handleSystemAction('restart-agents')}
+                  className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded transition-colors"
+                >
+                  Restart All Agents
+                </button>
+                <button
+                  onClick={() => loadAgentDetails()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition-colors"
+                >
+                  Refresh Status
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* System Control Modal */}
-        {showSystemModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-gray-900 border border-purple-400/50 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-semibold text-purple-400">System Control Center</h3>
-                <button 
-                  onClick={() => setShowSystemModal(false)}
-                  className="text-gray-400 hover:text-white text-xl"
+      {/* Student Monitoring Modal */}
+      {showStudentModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-blue-400/50 rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-semibold text-blue-400">Student Monitoring Center</h3>
+              <button 
+                onClick={() => setShowStudentModal(false)}
+                className="text-gray-400 hover:text-white text-xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {activeStudents.map((student) => (
+                <div key={student.userId} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-white">{student.name}</h4>
+                    {student.needsAttention && (
+                      <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2 text-sm mb-4">
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Module:</span>
+                      <span className="text-blue-300">{student.currentModule}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Progress:</span>
+                      <span className="text-green-400">{Math.round(student.progressPercentage)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Engagement:</span>
+                      <span className={`${
+                        student.engagementLevel > 0.8 ? 'text-green-400' :
+                        student.engagementLevel > 0.6 ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`}>
+                        {Math.round(student.engagementLevel * 100)}%
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleStudentClick(student.userId)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded transition-colors"
+                    >
+                      View Details
+                    </button>
+                    <button
+                      onClick={() => showNotification(`Sent support message to ${student.name}`, 'info')}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 px-3 rounded transition-colors"
+                    >
+                      Send Support
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="bg-gray-800/30 rounded-lg p-4">
+              <h4 className="text-lg font-medium text-blue-400 mb-3">Quick Actions</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <button
+                  onClick={() => showNotification('Generated progress report for all students', 'success')}
+                  className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm transition-colors"
                 >
-                  ✕
+                  Generate Report
+                </button>
+                <button
+                  onClick={() => showNotification('Sent encouragement messages to all active students', 'info')}
+                  className="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                >
+                  Send Encouragement
+                </button>
+                <button
+                  onClick={() => showNotification('Adjusted difficulty levels based on performance', 'success')}
+                  className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                >
+                  Auto-Adjust Difficulty
+                </button>
+                <button
+                  onClick={() => showNotification('Exported student data for analysis', 'info')}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                >
+                  Export Data
                 </button>
               </div>
-              
-              {systemHealth && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                      <h4 className="text-lg font-medium text-green-400 mb-3">Performance Metrics</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Response Time:</span>
-                          <span className="text-green-400">{Math.round(systemHealth.performance.responseTime)}ms</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Throughput:</span>
-                          <span className="text-blue-400">{systemHealth.performance.throughput} tasks/min</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Error Rate:</span>
-                          <span className="text-yellow-400">{(systemHealth.performance.errorRate * 100).toFixed(2)}%</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400">Uptime:</span>
-                          <span className="text-cyan-400">{(systemHealth.performance.uptime * 100).toFixed(1)}%</span>
-                        </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* System Control Modal */}
+      {showSystemModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-900 border border-purple-400/50 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-semibold text-purple-400">System Control Center</h3>
+              <button 
+                onClick={() => setShowSystemModal(false)}
+                className="text-gray-400 hover:text-white text-xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {systemHealth && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <h4 className="text-lg font-medium text-green-400 mb-3">Performance Metrics</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Response Time:</span>
+                        <span className="text-green-400">{Math.round(systemHealth.performance.responseTime)}ms</span>
                       </div>
-                    </div>
-                    
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                      <h4 className="text-lg font-medium text-purple-400 mb-3">Resource Usage</h4>
-                      <div className="space-y-3">
-                        <div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-gray-400">Memory:</span>
-                            <span className="text-purple-400">{Math.round(systemHealth.resources.memoryUsage * 100)}%</span>
-                          </div>
-                          <div className="w-full bg-gray-700 rounded-full h-2">
-                            <div className="bg-purple-400 h-2 rounded-full" style={{width: `${systemHealth.resources.memoryUsage * 100}%`}}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-gray-400">CPU:</span>
-                            <span className="text-orange-400">{Math.round(systemHealth.resources.cpuUsage * 100)}%</span>
-                          </div>
-                          <div className="w-full bg-gray-700 rounded-full h-2">
-                            <div className="bg-orange-400 h-2 rounded-full" style={{width: `${systemHealth.resources.cpuUsage * 100}%`}}></div>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between mb-1">
-                            <span className="text-gray-400">Storage:</span>
-                            <span className="text-blue-400">{Math.round(systemHealth.resources.storageUsage * 100)}%</span>
-                          </div>
-                          <div className="w-full bg-gray-700 rounded-full h-2">
-                            <div className="bg-blue-400 h-2 rounded-full" style={{width: `${systemHealth.resources.storageUsage * 100}%`}}></div>
-                          </div>
-                        </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Throughput:</span>
+                        <span className="text-blue-400">{systemHealth.performance.throughput} tasks/min</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Error Rate:</span>
+                        <span className="text-yellow-400">{(systemHealth.performance.errorRate * 100).toFixed(2)}%</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-400">Uptime:</span>
+                        <span className="text-cyan-400">{(systemHealth.performance.uptime * 100).toFixed(1)}%</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                    <h4 className="text-lg font-medium text-cyan-400 mb-3">System Controls</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <button
-                        onClick={() => handleSystemAction('optimize-performance')}
-                        className="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Optimize Performance
-                      </button>
-                      <button
-                        onClick={() => showNotification('System cache cleared successfully', 'success')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Clear Cache
-                      </button>
-                      <button
-                        onClick={() => showNotification('Database maintenance completed', 'success')}
-                        className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Database Maintenance
-                      </button>
-                      <button
-                        onClick={() => handleSystemAction('generate-report')}
-                        className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Generate Report
-                      </button>
-                      <button
-                        onClick={() => showNotification('Security scan initiated', 'info')}
-                        className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Security Scan
-                      </button>
-                      <button
-                        onClick={() => showNotification('Backup created successfully', 'success')}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Create Backup
-                      </button>
-                      <button
-                        onClick={() => showNotification('System logs exported', 'info')}
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Export Logs
-                      </button>
-                      <button
-                        onClick={() => showNotification('System restart scheduled', 'info')}
-                        className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Schedule Restart
-                      </button>
+                    <h4 className="text-lg font-medium text-purple-400 mb-3">Resource Usage</h4>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-gray-400">Memory:</span>
+                          <span className="text-purple-400">{Math.round(systemHealth.resources.memoryUsage * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div className="bg-purple-400 h-2 rounded-full" style={{width: `${systemHealth.resources.memoryUsage * 100}%`}}></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-gray-400">CPU:</span>
+                          <span className="text-orange-400">{Math.round(systemHealth.resources.cpuUsage * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div className="bg-orange-400 h-2 rounded-full" style={{width: `${systemHealth.resources.cpuUsage * 100}%`}}></div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-gray-400">Storage:</span>
+                          <span className="text-blue-400">{Math.round(systemHealth.resources.storageUsage * 100)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div className="bg-blue-400 h-2 rounded-full" style={{width: `${systemHealth.resources.storageUsage * 100}%`}}></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+                
+                <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  <h4 className="text-lg font-medium text-cyan-400 mb-3">System Controls</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button
+                      onClick={() => handleSystemAction('optimize-performance')}
+                      className="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                    >
+                      Optimize Performance
+                    </button>
+                    <button
+                      onClick={() => showNotification('System cache cleared successfully', 'success')}
+                      className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                    >
+                      Clear Cache
+                    </button>
+                    <button
+                      onClick={() => showNotification('Database maintenance completed', 'success')}
+                      className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                    >
+                      Database Maintenance
+                    </button>
+                    <button
+                      onClick={() => handleSystemAction('generate-report')}
+                      className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                    >
+                      Generate Report
+                    </button>
+                    <button
+                      onClick={() => showNotification('Security scan initiated', 'info')}
+                      className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                    >
+                      Security Scan
+                    </button>
+                    <button
+                      onClick={() => showNotification('Backup created successfully', 'success')}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                    >
+                      Create Backup
+                    </button>
+                    <button
+                      onClick={() => showNotification('System logs exported', 'info')}
+                      className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                    >
+                      Export Logs
+                    </button>
+                    <button
+                      onClick={() => showNotification('System restart scheduled', 'info')}
+                      className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                    >
+                      Schedule Restart
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
-      </main>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-gray-800 bg-gray-900/50 backdrop-blur-sm mt-16">
