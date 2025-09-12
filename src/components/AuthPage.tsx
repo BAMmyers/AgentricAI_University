@@ -24,29 +24,24 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   React.useEffect(() => {
     const checkIpBypass = async () => {
       try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        const userIp = data.ip;
+        // Check if running in development environment
+        const isDevelopment = window.location.hostname === 'localhost' || 
+                             window.location.hostname.includes('webcontainer') ||
+                             window.location.hostname.includes('local-credentialless') ||
+                             window.location.port === '5173';
         
-        // Add your IP addresses here for bypass
-        const allowedIps = [
-          '127.0.0.1',
-          'localhost',
-          // Add your actual IP address here
-        ];
-        
-        if (allowedIps.includes(userIp) || window.location.hostname === 'localhost') {
+        if (isDevelopment) {
           setIpBypass(true);
           // Auto-login as admin
           const adminUser = {
             id: 'admin-user',
             email: 'agentricaiuiux@gmail.com',
-            user_metadata: { name: 'AgentricAI Admin (IP Bypass)' }
+            user_metadata: { name: 'AgentricAI Admin (Dev Bypass)' }
           };
           onAuthSuccess(adminUser, 'admin');
         }
       } catch (error) {
-        console.log('IP check failed, continuing with normal auth');
+        console.log('Development check failed, continuing with normal auth');
       }
     };
     
