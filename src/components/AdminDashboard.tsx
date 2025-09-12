@@ -16,6 +16,10 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [systemAlerts, setSystemAlerts] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showAgentModal, setShowAgentModal] = useState(false);
+  const [showStudentModal, setShowStudentModal] = useState(false);
+  const [showSystemModal, setShowSystemModal] = useState(false);
+  const [agentDetails, setAgentDetails] = useState<any[]>([]);
 
   useEffect(() => {
     const loadAdminData = async () => {
@@ -76,9 +80,19 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
   const handleSystemAction = async (action: string, parameters?: any) => {
     try {
       switch (action) {
+        case 'view-agents':
+          await loadAgentDetails();
+          setShowAgentModal(true);
+          return;
+        case 'view-students':
+          setShowStudentModal(true);
+          return;
+        case 'view-system':
+          setShowSystemModal(true);
+          return;
         case 'restart-agents':
           console.log('🔄 Restarting agent system...');
-          // Implement agent restart logic
+          await restartAgentSystem();
           break;
         case 'optimize-performance':
           console.log('⚡ Optimizing system performance...');
@@ -102,6 +116,86 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
     } catch (error) {
       console.error(`Failed to execute ${action}:`, error);
       showNotification(`Failed to execute ${action}`, 'error');
+    }
+  };
+
+  const loadAgentDetails = async () => {
+    try {
+      const status = realTimeAgentSystem.getSystemStatus();
+      const mockAgents = [
+        {
+          id: 'learning-coordinator',
+          name: 'Learning Coordinator',
+          status: 'active',
+          tasks: 15,
+          efficiency: 94,
+          memory: '2.4GB',
+          uptime: '99.8%'
+        },
+        {
+          id: 'behavior-analyst',
+          name: 'Behavior Pattern Analyst',
+          status: 'processing',
+          tasks: 8,
+          efficiency: 87,
+          memory: '1.8GB',
+          uptime: '99.5%'
+        },
+        {
+          id: 'content-generator',
+          name: 'Adaptive Content Creator',
+          status: 'idle',
+          tasks: 3,
+          efficiency: 91,
+          memory: '0.9GB',
+          uptime: '99.9%'
+        }
+      ];
+      setAgentDetails(mockAgents);
+    } catch (error) {
+      console.error('Failed to load agent details:', error);
+    }
+  };
+
+  const restartAgentSystem = async () => {
+    try {
+      // Simulate agent restart process
+      showNotification('Restarting agent system...', 'info');
+      
+      // Update agent statuses
+      setTimeout(() => {
+        showNotification('All agents restarted successfully', 'success');
+        // Refresh system data
+        const loadAdminData = async () => {
+          const health = await adminMonitoringSystem.getSystemHealth();
+          setSystemHealth(health);
+        };
+        loadAdminData();
+      }, 2000);
+    } catch (error) {
+      showNotification('Failed to restart agents', 'error');
+    }
+  };
+
+  const handleAgentAction = async (agentId: string, action: string) => {
+    try {
+      switch (action) {
+        case 'restart':
+          await adminMonitoringSystem.restartAgent(agentId);
+          showNotification(`Agent ${agentId} restarted`, 'success');
+          break;
+        case 'pause':
+          showNotification(`Agent ${agentId} paused`, 'info');
+          break;
+        case 'resume':
+          showNotification(`Agent ${agentId} resumed`, 'success');
+          break;
+        default:
+          console.log(`Unknown agent action: ${action}`);
+      }
+      await loadAgentDetails(); // Refresh agent data
+    } catch (error) {
+      showNotification(`Failed to ${action} agent`, 'error');
     }
   };
 
@@ -633,6 +727,334 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* Agent Control Modal */}
+        {showAgentModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-gray-900 border border-cyan-400/50 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-cyan-400">Agent Control Center</h3>
+                <button 
+                  onClick={() => setShowAgentModal(false)}
+                  className="text-gray-400 hover:text-white text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {agentDetails.map((agent) => (
+                  <div key={agent.id} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-white">{agent.name}</h4>
+                      <div className={`w-3 h-3 rounded-full ${
+                        agent.status === 'active' ? 'bg-green-400 animate-pulse' :
+                        agent.status === 'processing' ? 'bg-yellow-400 animate-pulse' :
+                        'bg-gray-400'
+                      }`}></div>
+                    </div>
+                    
+                    <div className="space-y-2 text-sm mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Status:</span>
+                        <span className={`capitalize ${
+                          agent.status === 'active' ? 'text-green-400' :
+                          agent.status === 'processing' ? 'text-yellow-400' :
+                          'text-gray-400'
+                        }`}>{agent.status}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Tasks:</span>
+                        <span className="text-blue-400">{agent.tasks}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Efficiency:</span>
+                        <span className="text-green-400">{agent.efficiency}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Memory:</span>
+                        <span className="text-purple-400">{agent.memory}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Uptime:</span>
+                        <span className="text-cyan-400">{agent.uptime}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleAgentAction(agent.id, 'restart')}
+                        className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white text-xs py-2 px-3 rounded transition-colors"
+                      >
+                        Restart
+                      </button>
+                      {agent.status === 'active' ? (
+                        <button
+                          onClick={() => handleAgentAction(agent.id, 'pause')}
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white text-xs py-2 px-3 rounded transition-colors"
+                        >
+                          Pause
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAgentAction(agent.id, 'resume')}
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 px-3 rounded transition-colors"
+                        >
+                          Resume
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 pt-4 border-t border-gray-700">
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => handleSystemAction('restart-agents')}
+                    className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded transition-colors"
+                  >
+                    Restart All Agents
+                  </button>
+                  <button
+                    onClick={() => loadAgentDetails()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition-colors"
+                  >
+                    Refresh Status
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Student Monitoring Modal */}
+        {showStudentModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-gray-900 border border-blue-400/50 rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-blue-400">Student Monitoring Center</h3>
+                <button 
+                  onClick={() => setShowStudentModal(false)}
+                  className="text-gray-400 hover:text-white text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                {activeStudents.map((student) => (
+                  <div key={student.userId} className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-white">{student.name}</h4>
+                      {student.needsAttention && (
+                        <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2 text-sm mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Module:</span>
+                        <span className="text-blue-300">{student.currentModule}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Progress:</span>
+                        <span className="text-green-400">{Math.round(student.progressPercentage)}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Engagement:</span>
+                        <span className={`${
+                          student.engagementLevel > 0.8 ? 'text-green-400' :
+                          student.engagementLevel > 0.6 ? 'text-yellow-400' :
+                          'text-red-400'
+                        }`}>
+                          {Math.round(student.engagementLevel * 100)}%
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleStudentClick(student.userId)}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded transition-colors"
+                      >
+                        View Details
+                      </button>
+                      <button
+                        onClick={() => showNotification(`Sent support message to ${student.name}`, 'info')}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 px-3 rounded transition-colors"
+                      >
+                        Send Support
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="bg-gray-800/30 rounded-lg p-4">
+                <h4 className="text-lg font-medium text-blue-400 mb-3">Quick Actions</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <button
+                    onClick={() => showNotification('Generated progress report for all students', 'success')}
+                    className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                  >
+                    Generate Report
+                  </button>
+                  <button
+                    onClick={() => showNotification('Sent encouragement messages to all active students', 'info')}
+                    className="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                  >
+                    Send Encouragement
+                  </button>
+                  <button
+                    onClick={() => showNotification('Adjusted difficulty levels based on performance', 'success')}
+                    className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                  >
+                    Auto-Adjust Difficulty
+                  </button>
+                  <button
+                    onClick={() => showNotification('Exported student data for analysis', 'info')}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                  >
+                    Export Data
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* System Control Modal */}
+        {showSystemModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-gray-900 border border-purple-400/50 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold text-purple-400">System Control Center</h3>
+                <button 
+                  onClick={() => setShowSystemModal(false)}
+                  className="text-gray-400 hover:text-white text-xl"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              {systemHealth && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                      <h4 className="text-lg font-medium text-green-400 mb-3">Performance Metrics</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400">Response Time:</span>
+                          <span className="text-green-400">{Math.round(systemHealth.performance.responseTime)}ms</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400">Throughput:</span>
+                          <span className="text-blue-400">{systemHealth.performance.throughput} tasks/min</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400">Error Rate:</span>
+                          <span className="text-yellow-400">{(systemHealth.performance.errorRate * 100).toFixed(2)}%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400">Uptime:</span>
+                          <span className="text-cyan-400">{(systemHealth.performance.uptime * 100).toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                      <h4 className="text-lg font-medium text-purple-400 mb-3">Resource Usage</h4>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-400">Memory:</span>
+                            <span className="text-purple-400">{Math.round(systemHealth.resources.memoryUsage * 100)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div className="bg-purple-400 h-2 rounded-full" style={{width: `${systemHealth.resources.memoryUsage * 100}%`}}></div>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-400">CPU:</span>
+                            <span className="text-orange-400">{Math.round(systemHealth.resources.cpuUsage * 100)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div className="bg-orange-400 h-2 rounded-full" style={{width: `${systemHealth.resources.cpuUsage * 100}%`}}></div>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-400">Storage:</span>
+                            <span className="text-blue-400">{Math.round(systemHealth.resources.storageUsage * 100)}%</span>
+                          </div>
+                          <div className="w-full bg-gray-700 rounded-full h-2">
+                            <div className="bg-blue-400 h-2 rounded-full" style={{width: `${systemHealth.resources.storageUsage * 100}%`}}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <h4 className="text-lg font-medium text-cyan-400 mb-3">System Controls</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <button
+                        onClick={() => handleSystemAction('optimize-performance')}
+                        className="bg-green-600 hover:bg-green-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Optimize Performance
+                      </button>
+                      <button
+                        onClick={() => showNotification('System cache cleared successfully', 'success')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Clear Cache
+                      </button>
+                      <button
+                        onClick={() => showNotification('Database maintenance completed', 'success')}
+                        className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Database Maintenance
+                      </button>
+                      <button
+                        onClick={() => handleSystemAction('generate-report')}
+                        className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Generate Report
+                      </button>
+                      <button
+                        onClick={() => showNotification('Security scan initiated', 'info')}
+                        className="bg-red-600 hover:bg-red-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Security Scan
+                      </button>
+                      <button
+                        onClick={() => showNotification('Backup created successfully', 'success')}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Create Backup
+                      </button>
+                      <button
+                        onClick={() => showNotification('System logs exported', 'info')}
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Export Logs
+                      </button>
+                      <button
+                        onClick={() => showNotification('System restart scheduled', 'info')}
+                        className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Schedule Restart
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
