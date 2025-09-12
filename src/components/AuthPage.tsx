@@ -13,11 +13,62 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [ipBypass, setIpBypass] = useState(false);
 
   const supabase = createClient(
     import.meta.env.VITE_SUPABASE_URL,
     import.meta.env.VITE_SUPABASE_ANON_KEY
   );
+
+  // Check for IP bypass on component mount
+  React.useEffect(() => {
+    const checkIpBypass = async () => {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        const userIp = data.ip;
+        
+        // Add your IP addresses here for bypass
+        const allowedIps = [
+          '127.0.0.1',
+          'localhost',
+          // Add your actual IP address here
+        ];
+        
+        if (allowedIps.includes(userIp) || window.location.hostname === 'localhost') {
+          setIpBypass(true);
+          // Auto-login as admin
+          const adminUser = {
+            id: 'admin-user',
+            email: 'agentricaiuiux@gmail.com',
+            user_metadata: { name: 'AgentricAI Admin (IP Bypass)' }
+          };
+          onAuthSuccess(adminUser, 'admin');
+        }
+      } catch (error) {
+        console.log('IP check failed, continuing with normal auth');
+      }
+    };
+    
+    checkIpBypass();
+  }, [onAuthSuccess]);
+
+  // If IP bypass is active, show loading state
+  if (ipBypass) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-4">
+            <Brain className="h-12 w-12 text-cyan-400 animate-pulse" />
+          </div>
+          <h1 className="text-2xl font-bold text-cyan-400 mb-2">
+            Admin Access Granted
+          </h1>
+          <p className="text-gray-400">IP-based bypass active...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
