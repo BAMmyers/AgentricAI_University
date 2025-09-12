@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { agentricaiKnowledgeDB } from './knowledgeDatabase';
-import { lettaService } from './lettaIntegration';
 
 // Self-Evolving Agent Ecosystem Service - Inspired by your revolutionary architecture
 export class StealthAgentEcosystem {
@@ -242,17 +241,11 @@ export class StealthAgentEcosystem {
     
     // Create corresponding Letta agent for advanced AI capabilities
     try {
-      const lettaAgent = await lettaService.createUniversityAgent({
-        name: newAgent.name,
-        persona: `Specialized agent for ${taskRequirement.type} with focus on neurodiverse learning`,
-        specialization: this.mapToLettaSpecialization(taskRequirement.type),
-        neurodiverseOptimized: true
-      });
-      
-      newAgent.lettaAgentId = lettaAgent.id;
-      newAgent.lettaIntegration = true;
+      // Letta integration placeholder - can be implemented when service is available
+      console.log('Letta integration would be initialized here for:', newAgent.name);
+      newAgent.lettaIntegration = false;
     } catch (error) {
-      console.warn('Failed to create Letta agent, continuing with local agent only:', error);
+      console.warn('Letta integration not available, continuing with local agent only:', error);
       newAgent.lettaIntegration = false;
     }
     
