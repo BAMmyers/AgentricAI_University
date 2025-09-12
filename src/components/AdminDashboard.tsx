@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Users, Database, MessageSquare, Zap, Settings, Shield, BarChart3, Activity, LogOut, User, X, Play, Pause, RotateCcw, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
+import { Brain, Users, Shield, Zap, Activity, Database, ChevronRight, Eye, Settings, Play, LogOut, User, AlertTriangle, TrendingUp } from 'lucide-react';
 import { adminMonitoringSystem } from '../services/adminMonitoringSystem';
 import { realTimeAgentSystem } from '../services/realTimeAgentSystem';
 
@@ -1039,18 +1039,6 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
                       >
                         Create Backup
                       </button>
-                      <button
-                        onClick={() => showNotification('System logs exported', 'info')}
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Export Logs
-                      </button>
-                      <button
-                        onClick={() => showNotification('System restart scheduled', 'info')}
-                        className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded text-sm transition-colors"
-                      >
-                        Schedule Restart
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -1068,7 +1056,7 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
               Administrative Control Center •{' '}
               <span className="text-cyan-400 font-semibold">AgentricAI University</span>
             </p>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-gray-500 text-sm mt-2">
               Empowering minds. Engineering futures. Built for the ones who matter most.
             </p>
           </div>
