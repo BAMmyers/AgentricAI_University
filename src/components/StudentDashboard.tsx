@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Brain, BookOpen, Target, Award, Play, Pause, Settings, LogOut, User } from 'lucide-react';
-import { agentricaiKnowledgeDB } from '../services/knowledgeDatabase';
+import { learningContentEngine } from '../services/learningContentEngine';
+import { realTimeAgentSystem } from '../services/realTimeAgentSystem';
 
 interface StudentDashboardProps {
   user: any;
@@ -10,9 +11,10 @@ interface StudentDashboardProps {
 export default function StudentDashboard({ user, onSignOut }: StudentDashboardProps) {
   const [currentLesson, setCurrentLesson] = useState<any>(null);
   const [progress, setProgress] = useState(0);
-  const [learningPatterns, setLearningPatterns] = useState<any[]>([]);
   const [isLearning, setIsLearning] = useState(false);
-  const [adaptiveContent, setAdaptiveContent] = useState<any>(null);
+  const [learningSession, setLearningSession] = useState<any>(null);
+  const [personalizedContent, setPersonalizedContent] = useState<any[]>([]);
+  const [userProgress, setUserProgress] = useState<any>(null);
 
   useEffect(() => {
     initializeStudentSession();
@@ -20,82 +22,126 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
 
   const initializeStudentSession = async () => {
     try {
-      // Get student's learning patterns
-      const patterns = await agentricaiKnowledgeDB.retrieveLearningPatterns(user.id);
-      setLearningPatterns(patterns);
-
-      // Initialize adaptive content based on student's needs
-      const content = await generateAdaptiveContent(patterns);
-      setAdaptiveContent(content);
-
-      // Set current lesson
-      setCurrentLesson({
-        id: 'intro-to-learning',
-        title: 'Welcome to Your Learning Journey',
-        description: 'Let\'s start with understanding how you learn best',
-        difficulty: 'beginner',
-        estimatedTime: '15 minutes'
-      });
+      console.log('🎓 Initializing student learning session...');
+      
+      // Get personalized content
+      const content = await learningContentEngine.getPersonalizedContent(user.id);
+      setPersonalizedContent(content);
+      
+      // Set current lesson to first recommended module
+      if (content.length > 0) {
+        setCurrentLesson(content[0]);
+      }
+      
+      // Get user progress
+      const progress = await learningContentEngine.getUserProgress(user.id);
+      setUserProgress(progress);
+      setProgress(progress.progressPercentage);
+      
+      console.log('✅ Student session initialized');
 
     } catch (error) {
       console.error('Failed to initialize student session:', error);
     }
   };
 
-  const generateAdaptiveContent = async (patterns: any[]) => {
-    // Generate content based on learning patterns
-    return {
-      visualSupports: true,
-      audioEnabled: false,
-      interactionStyle: 'gentle',
-      pacing: 'self-directed',
-      sensoryConsiderations: {
-        lowContrast: false,
-        minimalAnimation: true,
-        clearInstructions: true
-      }
-    };
-  };
-
   const startLearning = async () => {
+    if (!currentLesson) return;
+    
     setIsLearning(true);
     
-    // Simulate progress increment
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval);
-          return 100;
-        }
-        return prev + 2;
-      });
-    }, 1000);
-    
-    // Store learning session start
-    await agentricaiKnowledgeDB.storeLearningPattern(
-      user.id,
-      'session_start',
-      {
-        lesson_id: currentLesson?.id,
-        timestamp: new Date().toISOString(),
-        adaptive_settings: adaptiveContent
-      }
-    );
+    try {
+      // Start real learning session
+      const session = await learningContentEngine.startLearningSession(user.id, currentLesson.id);
+      setLearningSession(session);
+      
+      // Delegate monitoring task to agents
+      await realTimeAgentSystem.delegateTask('monitor-student-engagement', {
+        sessionId: session.id,
+        userId: user.id,
+        moduleId: currentLesson.id
+      }, 'high');
+      
+      // Simulate realistic progress increment
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          const newProgress = Math.min(100, prev + Math.random() * 3 + 1);
+          
+          // Update session progress
+          if (learningSession) {
+            learningSession.progress = newProgress;
+          }
+          
+          if (newProgress >= 100) {
+            clearInterval(progressInterval);
+            setIsLearning(false);
+            handleLessonComplete();
+          }
+          
+          return newProgress;
+        });
+      }, 2000); // Update every 2 seconds
+      
+    } catch (error) {
+      console.error('Failed to start learning session:', error);
+      setIsLearning(false);
+    }
   };
-
+  
+  const handleLessonComplete = async () => {
+    try {
+      // Process lesson completion
+      await learningContentEngine.processActivityResponse(
+        learningSession.id,
+        'lesson-complete',
+        {
+          completed: true,
+          timeSpent: Date.now() - new Date(learningSession.startTime).getTime(),
+          engagement: 0.9
+        }
+      );
+      
+      // Update user progress
+      const updatedProgress = await learningContentEngine.getUserProgress(user.id);
+      setUserProgress(updatedProgress);
+      
+      console.log('🎉 Lesson completed successfully!');
+      
+    } catch (error) {
+      console.error('Failed to process lesson completion:', error);
+    }
+  };
+    
   const pauseLearning = async () => {
     setIsLearning(false);
     
-    // Store learning session pause
-    await agentricaiKnowledgeDB.storeLearningPattern(
-      user.id,
-      'session_pause',
-      {
-        lesson_id: currentLesson?.id,
-        progress: progress,
-        timestamp: new Date().toISOString()
+    if (learningSession) {
+      try {
+        // Process pause event
+        await learningContentEngine.processActivityResponse(
+          learningSession.id,
+          'session-pause',
+          {
+            paused: true,
+            currentProgress: progress,
+            timestamp: new Date().toISOString()
+          }
+        );
+        
+      } catch (error) {
+        console.error('Failed to process pause:', error);
       }
-    );
+    }
+  };
+
+  const selectLesson = async (lesson: any) => {
+    if (isLearning) {
+      await pauseLearning();
+    }
+    
+    setCurrentLesson(lesson);
+    setProgress(0);
+    setLearningSession(null);
   };
 
   return (
@@ -140,7 +186,7 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
 
         {/* Current Lesson */}
         {currentLesson && (
-          <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 mb-8 backdrop-blur-sm">
+          <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 mb-8 backdrop-blur-sm hover:border-cyan-400/30 transition-colors">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-semibold text-cyan-400">{currentLesson.title}</h3>
               <div className="flex items-center space-x-2">
@@ -169,11 +215,11 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
             <div className="flex items-center space-x-6 text-sm text-gray-400">
               <div className="flex items-center space-x-2">
                 <Target className="h-4 w-4" />
-                <span>Difficulty: {currentLesson.difficulty}</span>
+                <span>Difficulty: {currentLesson.difficulty || 'Adaptive'}</span>
               </div>
               <div className="flex items-center space-x-2">
                 <BookOpen className="h-4 w-4" />
-                <span>Time: {currentLesson.estimatedTime}</span>
+                <span>Time: {currentLesson.estimatedTime || 15} minutes</span>
               </div>
             </div>
 
@@ -193,9 +239,32 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
           </div>
         )}
 
+        {/* Available Lessons */}
+        {personalizedContent.length > 1 && (
+          <div className="mb-8">
+            <h3 className="text-xl font-semibold text-blue-400 mb-4">Your Personalized Learning Path</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {personalizedContent.slice(1).map((lesson, index) => (
+                <div 
+                  key={lesson.id}
+                  className="bg-gray-900/30 border border-gray-800 rounded-lg p-4 hover:border-blue-400/50 transition-all cursor-pointer"
+                  onClick={() => selectLesson(lesson)}
+                >
+                  <h4 className="text-lg font-medium text-blue-300 mb-2">{lesson.title}</h4>
+                  <p className="text-gray-400 text-sm mb-3">{lesson.description}</p>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Difficulty: {lesson.difficulty}</span>
+                    <span>{lesson.estimatedTime} min</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Learning Features */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-cyan-400/50 transition-all">
+          <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-cyan-400/50 transition-all cursor-pointer">
             <BookOpen className="h-12 w-12 text-cyan-400 mb-4" />
             <h3 className="text-xl font-semibold mb-2 text-cyan-400">Interactive Lessons</h3>
             <p className="text-gray-400 mb-4">
@@ -206,7 +275,7 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
             </button>
           </div>
 
-          <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-blue-400/50 transition-all">
+          <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-blue-400/50 transition-all cursor-pointer">
             <Target className="h-12 w-12 text-blue-400 mb-4" />
             <h3 className="text-xl font-semibold mb-2 text-blue-400">Personal Goals</h3>
             <p className="text-gray-400 mb-4">
@@ -217,7 +286,7 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
             </button>
           </div>
 
-          <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-purple-400/50 transition-all">
+          <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-purple-400/50 transition-all cursor-pointer">
             <Award className="h-12 w-12 text-purple-400 mb-4" />
             <h3 className="text-xl font-semibold mb-2 text-purple-400">Achievements</h3>
             <p className="text-gray-400 mb-4">
@@ -230,8 +299,8 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
         </div>
 
         {/* Adaptive Settings */}
-        {adaptiveContent && (
-          <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6">
+        {userProgress && (
+          <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-orange-400/30 transition-colors">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-orange-400">Your Learning Preferences</h3>
               <Settings className="h-6 w-6 text-orange-400" />
@@ -241,39 +310,60 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Visual Supports:</span>
-                  <span className={adaptiveContent.visualSupports ? "text-green-400" : "text-gray-500"}>
-                    {adaptiveContent.visualSupports ? "Enabled" : "Disabled"}
+                  <span className="text-green-400">
+                    Enabled
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Audio:</span>
-                  <span className={adaptiveContent.audioEnabled ? "text-green-400" : "text-gray-500"}>
-                    {adaptiveContent.audioEnabled ? "Enabled" : "Disabled"}
+                  <span className="text-gray-500">
+                    Disabled
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Interaction Style:</span>
-                  <span className="text-blue-400 capitalize">{adaptiveContent.interactionStyle}</span>
+                  <span className="text-blue-400 capitalize">Gentle</span>
                 </div>
               </div>
               
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Learning Pace:</span>
-                  <span className="text-purple-400 capitalize">{adaptiveContent.pacing}</span>
+                  <span className="text-purple-400 capitalize">Self-directed</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Minimal Animation:</span>
-                  <span className={adaptiveContent.sensoryConsiderations?.minimalAnimation ? "text-green-400" : "text-gray-500"}>
-                    {adaptiveContent.sensoryConsiderations?.minimalAnimation ? "Yes" : "No"}
+                  <span className="text-green-400">
+                    Yes
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Clear Instructions:</span>
-                  <span className={adaptiveContent.sensoryConsiderations?.clearInstructions ? "text-green-400" : "text-gray-500"}>
-                    {adaptiveContent.sensoryConsiderations?.clearInstructions ? "Yes" : "No"}
+                  <span className="text-green-400">
+                    Yes
                   </span>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Progress Summary */}
+        {userProgress && (
+          <div className="mt-8 bg-gray-900/30 border border-gray-800 rounded-lg p-6">
+            <h3 className="text-xl font-semibold text-green-400 mb-4">Your Amazing Progress!</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-400 mb-1">{userProgress.currentLevel}</div>
+                <div className="text-sm text-gray-400">Current Level</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-400 mb-1">{userProgress.completedModules}</div>
+                <div className="text-sm text-gray-400">Lessons Completed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-400 mb-1">{userProgress.strengths?.length || 0}</div>
+                <div className="text-sm text-gray-400">Strengths Identified</div>
               </div>
             </div>
           </div>
