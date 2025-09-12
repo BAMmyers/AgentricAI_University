@@ -4,12 +4,17 @@ import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import { agentricaiEcosystem } from './services/agentEcosystem';
 import { createClient } from '@supabase/supabase-js';
+import { Brain, Shield, Zap, Users, Activity, Database, Settings, Eye, Play, ChevronRight } from 'lucide-react';
 
 function App() {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [agentsActivated, setAgentsActivated] = useState(false);
+  const [ecosystemStatus, setEcosystemStatus] = useState<any>(null);
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [showKnowledgeDetails, setShowKnowledgeDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   const supabase = createClient(
     import.meta.env.VITE_SUPABASE_URL,
@@ -67,6 +72,7 @@ function App() {
         // Initialize and activate all agents
         const status = await agentricaiEcosystem.getEcosystemStatus();
         console.log('✅ Agent Ecosystem Status:', status);
+        setEcosystemStatus(status);
         
         // Ensure all agents are operational
         if (status.agent_status.total > 0) {
@@ -96,6 +102,20 @@ function App() {
     }
   };
 
+  const handleAgentClick = (agentId: string) => {
+    setSelectedAgent(agentId);
+    console.log(`Viewing details for agent: ${agentId}`);
+  };
+
+  const handleKnowledgeBaseClick = () => {
+    setShowKnowledgeDetails(!showKnowledgeDetails);
+  };
+
+  const handleFeatureClick = (feature: string) => {
+    console.log(`Activating feature: ${feature}`);
+    // Add feature-specific functionality here
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -118,37 +138,6 @@ function App() {
     return <AdminDashboard user={user} onSignOut={handleSignOut} agentsActivated={agentsActivated} />;
   } else {
     return <StudentDashboard user={user} onSignOut={handleSignOut} />;
-  }
-}
-
-export default App;
-    };
-  }, []);
-
-  const handleAgentClick = (agentId: string) => {
-    setSelectedAgent(agentId);
-    console.log(`Viewing details for agent: ${agentId}`);
-  };
-
-  const handleKnowledgeBaseClick = () => {
-    setShowKnowledgeDetails(!showKnowledgeDetails);
-  };
-
-  const handleFeatureClick = (feature: string) => {
-    console.log(`Activating feature: ${feature}`);
-    // Add feature-specific functionality here
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold text-cyan-400 mb-2">Initializing AgentricAI Ecosystem</h2>
-          <p className="text-gray-400">Deploying stealth agents...</p>
-        </div>
-      </div>
-    );
   }
 
   return (
