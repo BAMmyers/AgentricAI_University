@@ -194,7 +194,7 @@ export class StealthAgentEcosystem {
       
       const { data, error } = await this.supabase
         .from('stealth_agent_registry')
-        .insert({
+        .upsert({
           agent_id: agentConfig.id,
           name: agentConfig.name,
           type: agentConfig.type,
@@ -205,6 +205,8 @@ export class StealthAgentEcosystem {
           stealth_config: agentConfig.stealth_config,
           created_at: new Date().toISOString(),
           last_activity: new Date().toISOString()
+        }, {
+          onConflict: 'agent_id'
         });
 
       if (error) throw error;
@@ -549,7 +551,7 @@ export class StealthAgentEcosystem {
 
     // Get recent communications
     const { data: recentComms } = await this.supabase
-      .from('agentricai_agent_communications')
+      .from('stealth_agent_communications')
       .select('*')
       .gte('created_at', new Date(Date.now() - 60000).toISOString())
       .order('created_at', { ascending: false });
