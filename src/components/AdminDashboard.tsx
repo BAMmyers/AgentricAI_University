@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Users, Shield, Zap, Activity, Database, ChevronRight, Eye, Settings, Play, LogOut, User, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Brain, Users, Database, MessageSquare, Zap, Settings, Shield, BarChart3, Activity, LogOut, User, X, Play, Pause, RotateCcw, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { adminMonitoringSystem } from '../services/adminMonitoringSystem';
 import { realTimeAgentSystem } from '../services/realTimeAgentSystem';
 
