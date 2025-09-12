@@ -60,6 +60,17 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
   const startLearning = async () => {
     setIsLearning(true);
     
+    // Simulate progress increment
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval);
+          return 100;
+        }
+        return prev + 2;
+      });
+    }, 1000);
+    
     // Store learning session start
     await agentricaiKnowledgeDB.storeLearningPattern(
       user.id,

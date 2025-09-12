@@ -132,7 +132,8 @@ export class StealthAgentEcosystem {
 
   async registerAgent(agentSpec: any): Promise<string> {
     try {
-      const agentId = `agent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // Use the provided agent ID or generate a unique one
+      const agentId = agentSpec.id || `agent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const registrationData = {
         agent_id: agentId,

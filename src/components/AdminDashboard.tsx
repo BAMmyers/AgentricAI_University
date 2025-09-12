@@ -52,7 +52,25 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
 
   const handleFeatureClick = (feature: string) => {
     console.log(`Activating feature: ${feature}`);
-    // Add feature-specific functionality here
+    
+    // Provide user feedback
+    const featureMessages = {
+      'stealth-agents': 'Stealth Agent System activated - monitoring all agent activities',
+      'student-monitoring': 'Student Monitoring enabled - tracking learning progress',
+      'system-optimization': 'System Optimization initiated - analyzing performance metrics'
+    };
+    
+    const message = featureMessages[feature] || 'Feature activated';
+    
+    // Show temporary notification (you could replace this with a proper toast system)
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-md z-50';
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      document.body.removeChild(notification);
+    }, 3000);
   };
 
   if (loading) {

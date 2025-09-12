@@ -224,7 +224,7 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
           <div className="mt-6 text-center">
             <button
               onClick={() => setIsSignIn(!isSignIn)}
-              className="text-cyan-400 hover:text-cyan-300 text-sm transition-colors"
+              className="text-cyan-400 hover:text-cyan-300 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-gray-900"
             >
               {isSignIn ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
             </button>

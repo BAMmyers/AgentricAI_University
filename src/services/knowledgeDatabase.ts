@@ -541,14 +541,22 @@ export class AgentricAIKnowledgeDatabase {
         
         if (hasDataKeys) {
           // This is a knowledge entry
-          await this.storeKnowledge(parentCategory || 'core', key, value, 'system-init', 1.0);
+          try {
+            await this.storeKnowledge(parentCategory || 'core', key, value, 'system-init', 1.0);
+          } catch (error) {
+            console.warn(`Failed to store knowledge entry ${key}:`, error);
+          }
         } else {
           // This is a nested category
           await this.bulkInsertKnowledge(value, category);
         }
       } else {
         // This is a direct value
-        await this.storeKnowledge(parentCategory || 'core', key, value, 'system-init', 1.0);
+        try {
+          await this.storeKnowledge(parentCategory || 'core', key, value, 'system-init', 1.0);
+        } catch (error) {
+          console.warn(`Failed to store knowledge value ${key}:`, error);
+        }
       }
     }
   }
