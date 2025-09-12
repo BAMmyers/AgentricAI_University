@@ -25,6 +25,7 @@ export default function AgentricAIChatBot({ userRole, user, onHighlight }: ChatB
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [currentContext, setCurrentContext] = useState<any>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,17 +75,27 @@ export default function AgentricAIChatBot({ userRole, user, onHighlight }: ChatB
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isProcessing) return;
 
+    setIsProcessing(true);
     const userMessage = inputValue.trim();
     addMessage('user', userMessage);
     setInputValue('');
 
-    await simulateTyping();
-    await processUserMessage(userMessage);
+    try {
+      await simulateTyping();
+      await processUserMessage(userMessage);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const processUserMessage = async (message: string) => {
+    if (isProcessing && messages[messages.length - 1]?.type === 'user') {
+      // Prevent duplicate processing if already handling a message
+      return;
+    }
+
     const lowerMessage = message.toLowerCase();
 
     if (userRole === 'student') {
@@ -279,6 +290,8 @@ All systems are operating within normal parameters. No immediate action required
   };
 
   const handleOptionClick = (option: string) => {
+    if (isProcessing) return;
+    
     addMessage('user', option);
     processUserMessage(option);
   };
@@ -286,7 +299,9 @@ All systems are operating within normal parameters. No immediate action required
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      if (!isProcessing) {
+        handleSendMessage();
+      }
     }
   };
 
@@ -400,7 +415,7 @@ All systems are operating within normal parameters. No immediate action required
               />
               <button
                 onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isTyping}
+                disabled={!inputValue.trim() || isTyping || isProcessing}
                 className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white p-2 rounded-lg hover:from-cyan-600 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 <Send className="h-4 w-4" />
