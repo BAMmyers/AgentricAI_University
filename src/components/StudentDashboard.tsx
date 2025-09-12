@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Brain, BookOpen, Target, Award, Play, Pause, Settings, LogOut, User } from 'lucide-react';
 import { learningContentEngine } from '../services/learningContentEngine';
 import { realTimeAgentSystem } from '../services/realTimeAgentSystem';
+import AgentricAIChatBot from './AgentricAIChatBot';
 
 interface StudentDashboardProps {
   user: any;
@@ -15,6 +16,7 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
   const [learningSession, setLearningSession] = useState<any>(null);
   const [personalizedContent, setPersonalizedContent] = useState<any[]>([]);
   const [userProgress, setUserProgress] = useState<any>(null);
+  const [highlightedElement, setHighlightedElement] = useState<string | null>(null);
 
   useEffect(() => {
     initializeStudentSession();
@@ -144,6 +146,11 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
     setLearningSession(null);
   };
 
+  const handleHighlight = (elementId: string) => {
+    setHighlightedElement(elementId);
+    setTimeout(() => setHighlightedElement(null), 5000); // Remove highlight after 5 seconds
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Header */}
@@ -186,7 +193,14 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
 
         {/* Current Lesson */}
         {currentLesson && (
-          <div className="bg-gray-900/50 border border-gray-800 rounded-lg p-6 mb-8 backdrop-blur-sm hover:border-cyan-400/30 transition-colors">
+          <div 
+            id="current-lesson"
+            className={`bg-gray-900/50 border rounded-lg p-6 mb-8 backdrop-blur-sm transition-all duration-1000 ${
+              highlightedElement === 'current-lesson' 
+                ? 'border-cyan-400 shadow-lg shadow-cyan-400/50 neon-cyan' 
+                : 'border-gray-800 hover:border-cyan-400/30'
+            }`}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-semibold text-cyan-400">{currentLesson.title}</h3>
               <div className="flex items-center space-x-2">
@@ -263,7 +277,12 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
         )}
 
         {/* Learning Features */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div 
+          id="learning-features"
+          className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 transition-all duration-1000 ${
+            highlightedElement === 'learning-features' ? 'neon-blue' : ''
+          }`}
+        >
           <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-cyan-400/50 transition-all cursor-pointer">
             <BookOpen className="h-12 w-12 text-cyan-400 mb-4" />
             <h3 className="text-xl font-semibold mb-2 text-cyan-400">Interactive Lessons</h3>
@@ -369,6 +388,13 @@ export default function StudentDashboard({ user, onSignOut }: StudentDashboardPr
           </div>
         )}
       </main>
+      
+      {/* AgentricAI Chat Bot */}
+      <AgentricAIChatBot 
+        userRole="student" 
+        user={user} 
+        onHighlight={handleHighlight}
+      />
     </div>
   );
 }
