@@ -1,127 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import AuthPage from './components/AuthPage';
-import StudentDashboard from './components/StudentDashboard';
-import AdminDashboard from './components/AdminDashboard';
-import { agentricaiEcosystem } from './services/agentEcosystem';
-import { createClient } from '@supabase/supabase-js';
+import { Brain, Users, Shield, Zap, Activity, Database, ChevronRight, Eye, Settings, Play, LogOut, User } from 'lucide-react';
+import { agentricaiEcosystem } from '../services/agentEcosystem';
 
-function App() {
-  const [user, setUser] = useState<any>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
+interface AdminDashboardProps {
+  user: any;
+  onSignOut: () => void;
+  agentsActivated: boolean;
+}
+
+export default function AdminDashboard({ user, onSignOut, agentsActivated }: AdminDashboardProps) {
+  const [ecosystemStatus, setEcosystemStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [agentsActivated, setAgentsActivated] = useState(false);
-
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-  );
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  const [showKnowledgeDetails, setShowKnowledgeDetails] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
-    // Check for existing session
-    const checkSession = async () => {
+    const loadEcosystemStatus = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          // Get user profile
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profile) {
-            setUser(session.user);
-            setUserRole(profile.role);
-            await activateAgentEcosystem();
-          }
-        }
+        const status = await agentricaiEcosystem.getEcosystemStatus();
+        setEcosystemStatus(status);
       } catch (error) {
-        console.error('Session check failed:', error);
+        console.error('Failed to load ecosystem status:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    checkSession();
+    loadEcosystemStatus();
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setUserRole(null);
-        setAgentsActivated(false);
-      }
-    });
+    // Listen for real-time updates
+    const handleEcosystemUpdate = (event: CustomEvent) => {
+      setEcosystemStatus(event.detail);
+    };
+
+    window.addEventListener('agentricaiEcosystemUpdate', handleEcosystemUpdate as EventListener);
 
     return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const activateAgentEcosystem = async () => {
-    if (!agentsActivated) {
-      try {
-        console.log('🚀 Activating AgentricAI Ecosystem...');
-        
-        // Initialize and activate all agents
-        const status = await agentricaiEcosystem.getEcosystemStatus();
-        console.log('✅ Agent Ecosystem Status:', status);
-        
-        // Ensure all agents are operational
-        if (status.agent_status.total > 0) {
-          setAgentsActivated(true);
-          console.log('🎯 All agents are now operational and ready for task delegation');
-        }
-      } catch (error) {
-        console.error('Failed to activate agent ecosystem:', error);
-      }
-    }
-  };
-
-  const handleAuthSuccess = async (authUser: any, role: string) => {
-    setUser(authUser);
-    setUserRole(role);
-    await activateAgentEcosystem();
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setUserRole(null);
-      setAgentsActivated(false);
-    } catch (error) {
-      console.error('Sign out failed:', error);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold text-cyan-400 mb-2">Initializing AgentricAI University</h2>
-          <p className="text-gray-400">Loading your personalized learning environment...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show authentication page if not signed in
-  if (!user || !userRole) {
-    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
-  }
-
-  // Route to appropriate dashboard based on role
-  if (userRole === 'admin') {
-    return <AdminDashboard user={user} onSignOut={handleSignOut} agentsActivated={agentsActivated} />;
-  } else {
-    return <StudentDashboard user={user} onSignOut={handleSignOut} />;
-  }
-}
-
-export default App;
+      window.removeEventListener('agentricaiEcosystemUpdate', handleEcosystemUpdate as EventListener);
     };
   }, []);
 
@@ -144,8 +60,8 @@ export default App;
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-          <h2 className="text-2xl font-bold text-cyan-400 mb-2">Initializing AgentricAI Ecosystem</h2>
-          <p className="text-gray-400">Deploying stealth agents...</p>
+          <h2 className="text-2xl font-bold text-cyan-400 mb-2">Loading Admin Dashboard</h2>
+          <p className="text-gray-400">Preparing ecosystem monitoring...</p>
         </div>
       </div>
     );
@@ -160,7 +76,7 @@ export default App;
             <div className="flex items-center space-x-3">
               <Brain className="h-8 w-8 text-cyan-400" />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                AgentricAI University
+                AgentricAI University - Admin
               </h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -171,9 +87,21 @@ export default App;
                 <Settings className="h-5 w-5" />
               </button>
               <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-sm text-gray-400">Ecosystem Active</span>
+                <User className="h-5 w-5 text-gray-400" />
+                <span className="text-sm text-gray-300">{user.email}</span>
               </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full animate-pulse ${agentsActivated ? 'bg-green-400' : 'bg-yellow-400'}`}></div>
+                <span className="text-sm text-gray-400">
+                  {agentsActivated ? 'Agents Operational' : 'Agents Initializing'}
+                </span>
+              </div>
+              <button
+                onClick={onSignOut}
+                className="p-2 text-gray-400 hover:text-red-400 transition-colors"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
@@ -184,12 +112,25 @@ export default App;
         {/* Welcome Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-            Revolutionary AI-Powered Education
+            Administrative Control Center
           </h2>
           <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-            Empowering neurodiverse learners through adaptive AI agents and personalized educational experiences
+            Monitor and manage the AgentricAI ecosystem, oversee student progress, and optimize learning experiences
           </p>
         </div>
+
+        {/* Agent Activation Status */}
+        {agentsActivated && (
+          <div className="bg-green-900/20 border border-green-400/50 rounded-lg p-4 mb-8">
+            <div className="flex items-center space-x-3">
+              <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+              <h3 className="text-green-400 font-semibold">All Agents Operational</h3>
+            </div>
+            <p className="text-green-300 text-sm mt-2">
+              The AgentricAI ecosystem is fully activated with all agents ready for task delegation and student support.
+            </p>
+          </div>
+        )}
 
         {/* Ecosystem Status Grid */}
         {ecosystemStatus && (
@@ -321,7 +262,7 @@ export default App;
             <div className="mt-4 flex items-center justify-between">
               <button className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center">
                 <Play className="h-4 w-4 mr-1" />
-                Activate
+                Manage Agents
               </button>
               <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-cyan-400 transition-colors" />
             </div>
@@ -329,17 +270,17 @@ export default App;
 
           <div 
             className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-blue-400/50 transition-all cursor-pointer group transform hover:scale-105"
-            onClick={() => handleFeatureClick('neurodiverse-optimization')}
+            onClick={() => handleFeatureClick('student-monitoring')}
           >
             <Brain className="h-12 w-12 text-blue-400 mb-4" />
-            <h3 className="text-xl font-semibold mb-2 text-blue-400">Neurodiverse Optimization</h3>
+            <h3 className="text-xl font-semibold mb-2 text-blue-400">Student Monitoring</h3>
             <p className="text-gray-400">
-              Specially designed for neurodiverse learners with sensory-friendly interfaces and adaptive content.
+              Real-time monitoring of student progress, engagement, and learning patterns.
             </p>
             <div className="mt-4 flex items-center justify-between">
               <button className="text-sm text-blue-400 hover:text-blue-300 flex items-center">
-                <Settings className="h-4 w-4 mr-1" />
-                Configure
+                <Eye className="h-4 w-4 mr-1" />
+                View Students
               </button>
               <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-blue-400 transition-colors" />
             </div>
@@ -347,17 +288,17 @@ export default App;
 
           <div 
             className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-purple-400/50 transition-all cursor-pointer group transform hover:scale-105"
-            onClick={() => handleFeatureClick('real-time-adaptation')}
+            onClick={() => handleFeatureClick('system-optimization')}
           >
             <Zap className="h-12 w-12 text-purple-400 mb-4" />
-            <h3 className="text-xl font-semibold mb-2 text-purple-400">Real-time Adaptation</h3>
+            <h3 className="text-xl font-semibold mb-2 text-purple-400">System Optimization</h3>
             <p className="text-gray-400">
-              Dynamic content adjustment based on learning progress, engagement levels, and individual preferences.
+              Advanced system controls for optimizing performance and customizing learning environments.
             </p>
             <div className="mt-4 flex items-center justify-between">
               <button className="text-sm text-purple-400 hover:text-purple-300 flex items-center">
-                <Eye className="h-4 w-4 mr-1" />
-                Monitor
+                <Settings className="h-4 w-4 mr-1" />
+                Optimize
               </button>
               <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-purple-400 transition-colors" />
             </div>
@@ -440,8 +381,8 @@ export default App;
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <p className="text-gray-400">
-              Built with ❤️ for neurodiverse learners by{' '}
-              <span className="text-cyan-400 font-semibold">AgentricAI</span>
+              Administrative Control Center •{' '}
+              <span className="text-cyan-400 font-semibold">AgentricAI University</span>
             </p>
             <p className="text-sm text-gray-500 mt-2">
               Empowering minds. Engineering futures. Built for the ones who matter most.
@@ -452,5 +393,3 @@ export default App;
     </div>
   );
 }
-
-export default App;
