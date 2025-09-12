@@ -573,7 +573,7 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
             <div className="mt-4 flex items-center justify-between">
               <button className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center">
                 <Play className="h-4 w-4 mr-1" />
-                Restart Agents
+                Manage Agents
               </button>
               <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-cyan-400 transition-colors" />
             </div>
@@ -581,9 +581,9 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
 
           <div 
             className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-blue-400/50 transition-all cursor-pointer group transform hover:scale-105"
-            onClick={() => setActiveTab('students')}
+            onClick={() => handleSystemAction('view-students')}
           >
-            <Brain className="h-12 w-12 text-blue-400 mb-4" />
+            <Users className="h-12 w-12 text-blue-400 mb-4" />
             <h3 className="text-xl font-semibold mb-2 text-blue-400">Student Monitoring</h3>
             <p className="text-gray-400">
               Real-time monitoring of student progress, engagement levels, and learning patterns with detailed analytics.
@@ -1039,6 +1039,18 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
                       >
                         Create Backup
                       </button>
+                      <button
+                        onClick={() => showNotification('System logs exported', 'info')}
+                        className="bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Export Logs
+                      </button>
+                      <button
+                        onClick={() => showNotification('System restart scheduled', 'info')}
+                        className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded text-sm transition-colors"
+                      >
+                        Schedule Restart
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1056,8 +1068,8 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
               Administrative Control Center •{' '}
               <span className="text-cyan-400 font-semibold">AgentricAI University</span>
             </p>
-            <p className="text-gray-500 text-sm mt-2">
-              Empowering minds. Engineering futures. Built for the ones who matter most.
+            <p className="text-sm text-gray-500 mt-2">
+              Monitoring and optimizing the future of personalized education
             </p>
           </div>
         </div>
