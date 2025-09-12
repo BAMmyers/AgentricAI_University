@@ -218,7 +218,7 @@ class AgentInstance {
     if (this.supabase) {
       try {
         await this.supabase.from('agents').upsert({
-          id: this.id,
+          agent_name_id: this.id,
           name: this.name,
           type: this.type,
           status: 'active',
@@ -229,7 +229,7 @@ class AgentInstance {
           },
           memory_allocated: this.calculateMemoryNeeds(),
           updated_at: new Date().toISOString()
-        });
+        }, { onConflict: 'agent_name_id' });
       } catch (error) {
         console.warn(`Failed to register agent ${this.id}:`, error);
       }

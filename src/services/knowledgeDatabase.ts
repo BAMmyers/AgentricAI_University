@@ -106,7 +106,6 @@ export class AgentricAIKnowledgeDatabase {
   async storeKnowledge(category: string, key: string, value: any, sourceAgent?: string, confidence: number = 1.0): Promise<string> {
     const knowledgeId = `${category}:${key}`;
     const knowledgeEntry = {
-      id: knowledgeId,
       category,
       key,
       value,
@@ -123,7 +122,7 @@ export class AgentricAIKnowledgeDatabase {
       try {
         const { data, error } = await this.supabase
           .from('agentricai_knowledge_base')
-          .upsert(knowledgeEntry);
+          .upsert(knowledgeEntry, { onConflict: 'category,key' });
         
         if (error) throw error;
       } catch (error) {
