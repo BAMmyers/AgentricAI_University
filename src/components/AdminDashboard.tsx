@@ -570,21 +570,24 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
             <p className="text-gray-400">
               Monitor and control the AI agent ecosystem. Restart agents, view performance metrics, and manage task delegation.
             </p>
-            <div className="mt-4 flex items-center justify-between">
+            onClick={() => setWorkflowEngineOpen(true)}
               <button className="text-sm text-cyan-400 hover:text-cyan-300 flex items-center">
                 <Play className="h-4 w-4 mr-1" />
-                Restart Agents
+            <h3 className="text-xl font-semibold mb-2 text-cyan-400">Workflow Engine</h3>
               </button>
-              <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-cyan-400 transition-colors" />
+              Orchestrate complex multi-agent workflows and task automation
             </div>
+            <button className="text-cyan-400 hover:text-cyan-300 text-sm">
+              Manage Workflows →
+            </button>
           </div>
 
           <div 
             className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 hover:border-blue-400/50 transition-all cursor-pointer group transform hover:scale-105"
-            onClick={() => setActiveTab('students')}
+            onClick={() => setSecurityCenterOpen(true)}
           >
-            <Brain className="h-12 w-12 text-blue-400 mb-4" />
-            <h3 className="text-xl font-semibold mb-2 text-blue-400">Student Monitoring</h3>
+            <Shield className="h-12 w-12 text-blue-400 mb-4" />
+            <h3 className="text-xl font-semibold mb-2 text-blue-400">Security Center</h3>
             <p className="text-gray-400">
               Real-time monitoring of student progress, engagement levels, and learning patterns with detailed analytics.
             </p>
@@ -1067,10 +1070,16 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
             <p className="text-gray-400">
               Administrative Control Center •{' '}
               <span className="text-cyan-400 font-semibold">AgentricAI University</span>
-            </p>
+            onClick={() => setAnalyticsOpen(true)}
             <p className="text-sm text-gray-500 mt-2">
-              Empowering minds. Engineering futures. Built for the ones who matter most.
-            </p>
+            <BarChart3 className="h-12 w-12 text-purple-400 mb-4" />
+            <h3 className="text-xl font-semibold mb-2 text-purple-400">Analytics & Insights</h3>
+            <button className="text-blue-400 hover:text-blue-300 text-sm">
+              Deep insights into learning patterns, engagement, and system performance
+            </button>
+            <button className="text-purple-400 hover:text-purple-300 text-sm">
+              View Analytics →
+            </button>
           </div>
         </div>
       </footer>
