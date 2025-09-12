@@ -25,6 +25,18 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
     setError('');
 
     try {
+      // Check for admin credentials first
+      if (email === 'agentricaiuiux@gmail.com' && password === 'agentricaiADMIN') {
+        // Admin authentication - bypass Supabase for admin
+        const adminUser = {
+          id: 'admin-user',
+          email: 'agentricaiuiux@gmail.com',
+          user_metadata: { name: 'AgentricAI Admin' }
+        };
+        onAuthSuccess(adminUser, 'admin');
+        return;
+      }
+
       if (isSignIn) {
         // Sign in
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -35,7 +47,8 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
         if (error) throw error;
 
         if (data.user) {
-          // Get user profile to determine role
+          // All non-admin users are students
+          const role = 'student';
           const { data: profile, error: profileError } = await supabase
             .from('user_profiles')
             .select('*')
@@ -44,23 +57,22 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
 
           if (profileError) {
             console.warn('Profile not found, creating default profile');
-            // Create default profile
-            const role = email === 'agentricaiuiux@gmail.com' ? 'admin' : 'student';
+            // Create student profile
             const { data: newProfile } = await supabase
               .from('user_profiles')
               .insert({
                 id: data.user.id,
                 email: data.user.email,
                 name: data.user.user_metadata?.name || email.split('@')[0],
-                role: role,
-                permissions: role === 'admin' ? ['admin', 'basic_access'] : ['basic_access']
+                role: 'student',
+                permissions: ['basic_access']
               })
               .select()
               .single();
 
-            onAuthSuccess(data.user, role);
+            onAuthSuccess(data.user, 'student');
           } else {
-            onAuthSuccess(data.user, profile.role);
+            onAuthSuccess(data.user, 'student');
           }
 
           // Log authentication
@@ -86,14 +98,13 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
         if (error) throw error;
 
         if (data.user) {
-          // Create user profile
-          const role = email === 'agentricaiuiux@gmail.com' ? 'admin' : 'student';
+          // Create student profile (all signups are students)
           await supabase.from('user_profiles').insert({
             id: data.user.id,
             email: data.user.email,
             name: name,
-            role: role,
-            permissions: role === 'admin' ? ['admin', 'basic_access'] : ['basic_access']
+            role: 'student',
+            permissions: ['basic_access']
           });
 
           // Log authentication
@@ -104,7 +115,7 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
             timestamp: new Date().toISOString()
           });
 
-          onAuthSuccess(data.user, role);
+          onAuthSuccess(data.user, 'student');
         }
       }
     } catch (error: any) {
@@ -219,12 +230,11 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
             </button>
           </div>
 
-          {/* Demo Credentials */}
+          {/* Student Demo */}
           <div className="mt-6 p-3 bg-gray-800/50 rounded border border-gray-700">
-            <p className="text-xs text-gray-400 mb-2">Demo Credentials:</p>
+            <p className="text-xs text-gray-400 mb-2">Student Demo:</p>
             <div className="text-xs space-y-1">
-              <div className="text-cyan-300">Admin: agentricaiuiux@gmail.com</div>
-              <div className="text-blue-300">Student: student@example.com</div>
+              <div className="text-blue-300">Email: student@example.com</div>
               <div className="text-gray-400">Password: demo123</div>
             </div>
           </div>
