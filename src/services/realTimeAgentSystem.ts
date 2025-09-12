@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { v4 as uuidv4 } from 'uuid';
 import { agentricaiKnowledgeDB } from './knowledgeDatabase';
 
 // Real-time Agent Task Delegation System
@@ -192,6 +193,7 @@ export class RealTimeAgentSystem {
 
 // Agent Instance Class
 class AgentInstance {
+  public dbId: string;
   public id: string;
   public name: string;
   public type: string;
@@ -204,6 +206,7 @@ class AgentInstance {
   private efficiencyScore: number = 1.0;
 
   constructor(config: any, supabase: any) {
+    this.dbId = uuidv4();
     this.id = config.id;
     this.name = config.name;
     this.type = config.type;
@@ -218,7 +221,7 @@ class AgentInstance {
     if (this.supabase) {
       try {
         await this.supabase.from('agents').upsert({
-          id: this.id,
+          id: this.dbId,
           name: this.name,
           type: this.type,
           status: 'active',
@@ -229,7 +232,7 @@ class AgentInstance {
           },
           memory_allocated: this.calculateMemoryNeeds(),
           updated_at: new Date().toISOString()
-        }, { onConflict: 'id' });
+        });
       } catch (error) {
         console.warn(`Failed to register agent ${this.id}:`, error);
       }
