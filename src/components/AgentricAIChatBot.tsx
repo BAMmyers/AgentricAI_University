@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Brain, Send, X, Minimize2, Maximize2, Sparkles, TrendingUp, Users, AlertTriangle, DollarSign, MessageSquare } from 'lucide-react';
-import { adminMonitoringSystem } from '../services/adminMonitoringSystem';
-import { learningContentEngine } from '../services/learningContentEngine';
+import { ragKnowledgeBase } from '../services/ragKnowledgeBase';
 
 interface ChatBotProps {
   userRole: 'admin' | 'student';
@@ -91,128 +90,36 @@ export default function AgentricAIChatBot({ userRole, user, onHighlight }: ChatB
   };
 
   const processUserMessage = async (message: string) => {
-    if (isProcessing && messages[messages.length - 1]?.type === 'user') {
-      // Prevent duplicate processing if already handling a message
+    // Use RAG system to get response
+    const response = await ragKnowledgeBase.queryKnowledge(message, userRole);
+    
+    // Check if this is a student asking for next steps
+    if (userRole === 'student' && (message.toLowerCase().includes('what do i do') || 
+        message.toLowerCase().includes('next') || message.toLowerCase().includes('start'))) {
+      addMessage('agent', response);
+      
+      // Trigger highlight effect for student guidance
+      setTimeout(() => {
+        onHighlight?.('current-lesson');
+        addMessage('agent', "I've highlighted the recommended lesson for you. Click on it to get started! ✨");
+      }, 1000);
       return;
     }
-
-    const lowerMessage = message.toLowerCase();
-
-    // Check for direct questions first
-    if (lowerMessage.includes('how many agents are operational') || lowerMessage.includes('agents operational')) {
-      if (userRole === 'admin') {
-        const systemHealth = await adminMonitoringSystem.getSystemHealth();
-        addMessage('agent', `Currently we have ${systemHealth.agents?.active || 5} agents operational out of ${systemHealth.agents?.total || 6} total agents. System efficiency is running at ${((systemHealth.agents?.efficiency || 0.94) * 100).toFixed(1)}%. Would you like detailed agent analytics?`, [
-          'Show detailed agent status',
-          'Agent performance metrics',
-          'System optimization recommendations'
-        ]);
-        return;
-      }
-    }
-
-    if (userRole === 'student') {
-      await handleStudentMessage(lowerMessage, message);
-    } else {
-      await handleAdminMessage(lowerMessage, message);
-    }
-  };
-
-  const handleStudentMessage = async (lowerMessage: string, originalMessage: string) => {
-    if (lowerMessage.includes('what do i do') || lowerMessage.includes('next') || lowerMessage.includes('start')) {
-      try {
-        const content = await learningContentEngine.getPersonalizedContent(user.id);
-        if (content.length > 0) {
-          const suggestion = content[0];
-          addMessage('agent', `I suggest you check out "${suggestion.title}". It's perfect for your learning level and will help you build foundational skills!`);
-          
-          // Trigger highlight effect
-          setTimeout(() => {
-            onHighlight?.('current-lesson');
-            addMessage('agent', "I've highlighted the recommended lesson for you. Click on it to get started! ✨");
-          }, 1000);
-        } else {
-          addMessage('agent', "Let me set up some personalized content for you. Give me just a moment...");
-          setTimeout(() => {
-            addMessage('agent', "I've prepared some great learning activities! Check out the 'Interactive Lessons' section to begin your journey.");
-            onHighlight?.('learning-features');
-          }, 2000);
-        }
-      } catch (error) {
-        addMessage('agent', "I'm setting up your personalized learning path. In the meantime, try exploring the 'Interactive Lessons' section!");
-        onHighlight?.('learning-features');
-      }
-    } else if (lowerMessage.includes('help') || lowerMessage.includes('stuck')) {
-      addMessage('agent', "I'm here to help! What specifically would you like assistance with?", [
-        "How to start a lesson",
-        "Understanding my progress",
-        "Changing my settings",
-        "Taking a break"
-      ]);
-    } else if (lowerMessage.includes('progress') || lowerMessage.includes('how am i doing')) {
-      try {
-        const progress = await learningContentEngine.getUserProgress(user.id);
-        addMessage('agent', `You're doing amazing! You're currently at level ${progress.currentLevel} and have completed ${progress.completedModules} lessons. Your strengths include: ${progress.strengths?.join(', ') || 'visual learning'}. Keep up the great work! 🌟`);
-      } catch (error) {
-        addMessage('agent', "You're making great progress! Keep exploring the lessons and I'll track your achievements along the way. 🎉");
-      }
-    } else if (lowerMessage.includes('break') || lowerMessage.includes('tired')) {
-      addMessage('agent', "It's important to take breaks! Would you like me to remind you to take breaks during your learning sessions?", [
-        "Yes, remind me every 15 minutes",
-        "Yes, remind me every 30 minutes",
-        "No thanks, I'll manage my own breaks"
-      ]);
-    } else {
-      // General response
-      addMessage('agent', "That's a great question! I'm here to help you navigate AAU. You can ask me about lessons, your progress, or where to go next. What would you like to explore?", [
-        "Show me my next lesson",
-        "Check my progress",
-        "Help with settings",
-        "Take a break"
-      ]);
-    }
-  };
-
-  const handleAdminMessage = async (lowerMessage: string, originalMessage: string) => {
-    if (lowerMessage.includes('status') || lowerMessage.includes('overview') || lowerMessage.includes('report')) {
-      addMessage('agent', "I can provide detailed analysis on several key areas. Which would you like me to focus on?", [
-        "System Overview",
-        "Student Performance", 
-        "Agent Analytics",
-        "Security Status"
-      ]);
+    
+    // Check if admin is asking for multi-topic analysis
+    if (userRole === 'admin' && (message.includes('1 and 2') || message.includes('1,2') || 
+        message.includes('finance') && message.includes('complaints'))) {
+      const multiReport = await ragKnowledgeBase.getMultiTopicReport(['Financial Analytics', 'Complaints & Issues'], userRole);
+      addMessage('agent', multiReport);
       return;
-    } else if (lowerMessage.includes('student') && lowerMessage.includes('problem')) {
-      const students = await adminMonitoringSystem.getActiveStudents();
-      const needsAttention = students.filter(s => s.needsAttention);
-      addMessage('agent', `I've identified ${needsAttention.length} students who may need attention. Would you like me to provide details or suggest interventions?`, [
-        "Show student details",
-        "Suggest interventions",
-        "Generate support report"
-      ]);
-    } else if (lowerMessage.includes('optimize') || lowerMessage.includes('improve')) {
-      addMessage('agent', "I can help optimize several areas of the system. What would you like to focus on?", [
-        "System Performance",
-        "Student Engagement",
-        "Agent Efficiency",
-        "Resource Usage"
-      ]);
-    } else if (lowerMessage.includes('alert') || lowerMessage.includes('issue')) {
-      const systemHealth = await adminMonitoringSystem.getSystemHealth();
-      const alertCount = systemHealth.alerts?.length || 0;
-      addMessage('agent', `Currently monitoring ${alertCount} system alerts. The overall system health is "${systemHealth.overall}". Would you like detailed analysis?`, [
-        "Show critical alerts",
-        "System health report",
-        "Recommended actions"
-      ]);
+    }
+    
+    // For general queries, provide response with options
+    if (response.includes('What specific area') || response.includes('What would you like to explore')) {
+      const topics = ragKnowledgeBase.getAvailableTopics(userRole);
+      addMessage('agent', response, topics);
     } else {
-      // General admin response
-      addMessage('agent', "I'm your data analytics specialist. I can provide insights on system performance, student analytics, agent status, and much more. What would you like to analyze?", [
-        "System Overview",
-        "Student Performance",
-        "Agent Analytics",
-        "Security Status"
-      ]);
+      addMessage('agent', response);
     }
   };
 
@@ -317,133 +224,23 @@ All systems are operating within normal parameters. No immediate action required
   };
 
   const handleOptionSelection = async (option: string) => {
-    await simulateTyping(1000);
+    await simulateTyping(800);
     
-    if (userRole === 'admin') {
-      await handleAdminOptionSelection(option);
+    // Use RAG system for option responses
+    const response = await ragKnowledgeBase.queryKnowledge(option, userRole);
+    
+    // Special handling for student lesson recommendations
+    if (userRole === 'student' && option.includes('next lesson')) {
+      addMessage('agent', response);
+      setTimeout(() => {
+        onHighlight?.('current-lesson');
+        addMessage('agent', "I've highlighted your recommended lesson above. Click on it to get started! 🌟");
+      }, 1000);
     } else {
-      await handleStudentOptionSelection(option);
-    }
-  };
-
-  const handleAdminOptionSelection = async (option: string) => {
-    if (option.includes('System Overview') || option.includes('1')) {
-      const systemHealth = await adminMonitoringSystem.getSystemHealth();
-      addMessage('agent', `📊 **System Performance Analysis:**
-
-**Overall Health:** ${systemHealth.overall.toUpperCase()}
-**Response Time:** ${systemHealth.performance?.responseTime?.toFixed(0)}ms (Excellent)
-**Uptime:** ${((systemHealth.performance?.uptime || 0.999) * 100).toFixed(2)}%
-**Error Rate:** ${((systemHealth.performance?.errorRate || 0.01) * 100).toFixed(2)}%
-
-**Resource Usage:**
-• Memory: ${((systemHealth.resources?.memoryUsage || 0.5) * 100).toFixed(0)}%
-• CPU: ${((systemHealth.resources?.cpuUsage || 0.3) * 100).toFixed(0)}%
-• Storage: ${((systemHealth.resources?.storageUsage || 0.4) * 100).toFixed(0)}%
-
-**Recommendation:** System is performing optimally. Consider scaling resources if usage exceeds 80%.`);
-    } else if (option.includes('Student Performance') || option.includes('2')) {
-      const students = await adminMonitoringSystem.getActiveStudents();
-      const avgEngagement = students.reduce((sum, s) => sum + s.engagementLevel, 0) / students.length;
-      const needsAttention = students.filter(s => s.needsAttention).length;
-      
-      addMessage('agent', `👥 **Student Analytics Report:**
-
-**Active Students:** ${students.length}
-**Average Engagement:** ${(avgEngagement * 100).toFixed(1)}%
-**Students Needing Attention:** ${needsAttention}
-**Completion Rate:** ${Math.floor(Math.random() * 20 + 75)}%
-
-**Top Performing Areas:**
-• Visual Learning Modules: 94% completion
-• Pattern Recognition: 87% engagement
-• Interactive Content: 91% satisfaction
-
-**Areas for Improvement:**
-• Audio-based content needs optimization
-• Break reminders should be more frequent
-
-**Recommendation:** Focus on visual learning enhancements and implement adaptive break scheduling.`);
-    } else if (option.includes('Agent Analytics') || option.includes('3')) {
-      addMessage('agent', `🤖 **Agent Status Analysis:**
-
-**Total Agents:** 6 deployed
-**Active Agents:** 5 (83% operational)
-**Processing Tasks:** 12 concurrent
-**Average Efficiency:** 94.2%
-
-**Agent Performance:**
-• Learning Coordinator: 98% efficiency ✅
-• Behavior Analyst: 91% efficiency ✅  
-• Content Generator: 89% efficiency ⚠️
-• Progress Monitor: 96% efficiency ✅
-• Communication Router: 99% efficiency ✅
-• Error Handler: 92% efficiency ✅
-
-**Recommendation:** Content Generator agent may need optimization. Consider restarting or reallocating resources.`);
-    } else if (option.includes('Security Status') || option.includes('4')) {
-      addMessage('agent', `🛡️ **Security Status Report:**
-
-**Overall Security:** SECURE
-**Active Threats:** 0 detected
-**Failed Login Attempts:** 2 (last 24h)
-**System Vulnerabilities:** 0 critical
-
-**Access Control:**
-• Admin Sessions: 1 active
-• Student Sessions: ${Math.floor(Math.random() * 20 + 10)} active
-• API Rate Limiting: Active
-• Data Encryption: AES-256 enabled
-
-**Recommendation:** All security measures are functioning properly. Regular security audits recommended.`);
-    } else {
-      addMessage('agent', "I've processed your request. Is there anything else you'd like me to analyze?");
+      addMessage('agent', response);
     }
     
-    // Clear context after handling option
     setCurrentContext(null);
-  };
-
-  const handleStudentOptionSelection = async (option: string) => {
-    if (option.includes('Show me my next lesson')) {
-      try {
-        const content = await learningContentEngine.getPersonalizedContent(user.id);
-        if (content.length > 0) {
-          const suggestion = content[0];
-          addMessage('agent', `Perfect! I recommend "${suggestion.title}". It's designed specifically for your learning style and will help you build important skills! ✨`);
-          
-          setTimeout(() => {
-            onHighlight?.('current-lesson');
-            addMessage('agent', "I've highlighted your recommended lesson above. Click on it to get started! 🌟");
-          }, 1000);
-        }
-      } catch (error) {
-        addMessage('agent', "Let me prepare some great content for you! Check out the 'Interactive Lessons' section to begin.");
-        onHighlight?.('learning-features');
-      }
-    } else if (option.includes('Check my progress')) {
-      try {
-        const progress = await learningContentEngine.getUserProgress(user.id);
-        addMessage('agent', `You're doing fantastic! 🎉 You're at level ${progress.currentLevel} and have completed ${progress.completedModules} lessons. Your strengths include: ${progress.strengths?.join(', ') || 'visual learning'}. Keep up the amazing work!`);
-      } catch (error) {
-        addMessage('agent', "You're making excellent progress! Keep exploring the lessons and I'll track all your achievements. 🌟");
-      }
-    } else if (option.includes('Help with settings')) {
-      addMessage('agent', "I can help you customize your learning experience! What would you like to adjust?", [
-        "Visual contrast settings",
-        "Audio preferences", 
-        "Learning pace",
-        "Break reminders"
-      ]);
-    } else if (option.includes('Take a break')) {
-      addMessage('agent', "Great idea! Taking breaks helps your brain process what you've learned. Would you like me to set up break reminders for you?", [
-        "Remind me every 15 minutes",
-        "Remind me every 30 minutes",
-        "I'll manage my own breaks"
-      ]);
-    } else {
-      addMessage('agent', "Thanks for letting me know! Is there anything else I can help you with today? 😊");
-    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
