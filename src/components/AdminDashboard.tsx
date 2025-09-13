@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, LogOut, User, Activity, Database, Users, Shield, MessageSquare, Wrench, ChevronRight } from 'lucide-react';
+import { Brain, Settings, LogOut, User, Activity, Users, Database, Shield, Zap, MessageSquare, ChevronRight, TrendingUp } from 'lucide-react';
 import { adminMonitoringSystem } from '../services/adminMonitoringSystem';
   MessageSquare, Shield, TrendingUp, Users, AlertTriangle, X
 import AgentricAIChatBot from './AgentricAIChatBot';
