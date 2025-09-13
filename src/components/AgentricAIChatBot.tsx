@@ -98,6 +98,19 @@ export default function AgentricAIChatBot({ userRole, user, onHighlight }: ChatB
 
     const lowerMessage = message.toLowerCase();
 
+    // Check for direct questions first
+    if (lowerMessage.includes('how many agents are operational') || lowerMessage.includes('agents operational')) {
+      if (userRole === 'admin') {
+        const systemHealth = await adminMonitoringSystem.getSystemHealth();
+        addMessage('agent', `Currently we have ${systemHealth.agents?.active || 5} agents operational out of ${systemHealth.agents?.total || 6} total agents. System efficiency is running at ${((systemHealth.agents?.efficiency || 0.94) * 100).toFixed(1)}%. Would you like detailed agent analytics?`, [
+          'Show detailed agent status',
+          'Agent performance metrics',
+          'System optimization recommendations'
+        ]);
+        return;
+      }
+    }
+
     if (userRole === 'student') {
       await handleStudentMessage(lowerMessage, message);
     } else {
@@ -438,19 +451,6 @@ All systems are operating within normal parameters. No immediate action required
       e.preventDefault();
 
   if (!isOpen) {
-    // Check for direct questions first
-    if (lowerMessage.includes('how many agents are operational') || lowerMessage.includes('agents operational')) {
-      if (userRole === 'admin') {
-        const systemHealth = await adminMonitoringSystem.getSystemHealth();
-        addMessage('agent', `Currently we have ${systemHealth.agents?.active || 5} agents operational out of ${systemHealth.agents?.total || 6} total agents. System efficiency is running at ${((systemHealth.agents?.efficiency || 0.94) * 100).toFixed(1)}%. Would you like detailed agent analytics?`, [
-          'Show detailed agent status',
-          'Agent performance metrics',
-          'System optimization recommendations'
-        ]);
-        return;
-      }
-    }
-
     return (
       <button
         onClick={() => {
