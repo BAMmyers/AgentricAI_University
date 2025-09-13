@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Brain, Send, X, Minimize2, Maximize2, Sparkles, TrendingUp, Users, AlertTriangle, DollarSign, MessageSquare } from 'lucide-react';
 import { ragKnowledgeBase } from '../services/ragKnowledgeBase';
+import { adminMonitoringSystem } from '../services/adminMonitoringSystem';
 
 interface ChatBotProps {
   userRole: 'admin' | 'student';
