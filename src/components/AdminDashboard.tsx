@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Brain, Users, Shield, Zap, Activity, Database, ChevronRight, Eye, Settings, Play, LogOut, User, AlertTriangle, TrendingUp } from 'lucide-react';
 import { adminMonitoringSystem } from '../services/adminMonitoringSystem';
-import { realTimeAgentSystem } from '../services/realTimeAgentSystem';
+  MessageSquare, Shield, TrendingUp, Users, AlertTriangle, X
 import AgentricAIChatBot from './AgentricAIChatBot';
+import AgentTuningConsole from './AgentTuningConsole';
 
 interface AdminDashboardProps {
   user: any;
@@ -21,7 +22,6 @@ export default function AdminDashboard({ user, onSignOut, agentsActivated }: Adm
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [showSystemModal, setShowSystemModal] = useState(false);
   const [agentDetails, setAgentDetails] = useState<any[]>([]);
-  const [showAgentTuning, setShowAgentTuning] = useState(false);
 
   useEffect(() => {
     const loadAdminData = async () => {
