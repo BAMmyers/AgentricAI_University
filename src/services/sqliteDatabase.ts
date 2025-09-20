@@ -1,15 +1,13 @@
-import Database from 'better-sqlite3';
+import initSqlJs, { Database } from 'sql.js';
 
-// SQLite Database Service - Local data storage
+// SQLite Database Service - Local data storage for browser
 export class SQLiteDatabase {
   private static instance: SQLiteDatabase;
-  private db: Database.Database;
+  private db: Database | null = null;
+  private isInitialized = false;
 
   private constructor() {
-    // Initialize SQLite database
-    this.db = new Database('agentricai.db');
-    this.initializeTables();
-    this.seedInitialData();
+    this.initializeDatabase();
   }
 
   static getInstance(): SQLiteDatabase {
@@ -19,7 +17,47 @@ export class SQLiteDatabase {
     return SQLiteDatabase.instance;
   }
 
+  private async initializeDatabase() {
+    try {
+      const SQL = await initSqlJs({
+        locateFile: (file: string) => `https://sql.js.org/dist/${file}`
+      });
+      
+      // Try to load existing database from localStorage
+      const savedDb = localStorage.getItem('agentricai-db');
+      if (savedDb) {
+        const uint8Array = new Uint8Array(JSON.parse(savedDb));
+        this.db = new SQL.Database(uint8Array);
+      } else {
+        this.db = new SQL.Database();
+      }
+      
+      this.initializeTables();
+      this.seedInitialData();
+      this.isInitialized = true;
+      
+      console.log('✅ SQLite database initialized for browser');
+    } catch (error) {
+      console.error('Failed to initialize SQLite database:', error);
+    }
+  }
+
+  private async waitForInitialization(): Promise<void> {
+    while (!this.isInitialized || !this.db) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+
+  private saveToLocalStorage(): void {
+    if (this.db) {
+      const data = this.db.export();
+      localStorage.setItem('agentricai-db', JSON.stringify(Array.from(data)));
+    }
+  }
+
   private initializeTables() {
+    if (!this.db) return;
+
     // User profiles table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS user_profiles (
@@ -178,37 +216,42 @@ export class SQLiteDatabase {
       )
     `);
 
-    console.log('✅ SQLite database tables initialized');
+    this.saveToLocalStorage();
   }
 
   private seedInitialData() {
+    if (!this.db) return;
+
     // Create admin user
-    const adminExists = this.db.prepare('SELECT id FROM user_profiles WHERE email = ?').get('agentricaiuiux@gmail.com');
+    const adminExists = this.db.exec('SELECT id FROM user_profiles WHERE email = "agentricaiuiux@gmail.com"');
     
-    if (!adminExists) {
-      this.db.prepare(`
+    if (adminExists.length === 0) {
+      this.db.exec(`
         INSERT INTO user_profiles (id, email, name, role, permissions)
-        VALUES (?, ?, ?, ?, ?)
-      `).run('admin-user', 'agentricaiuiux@gmail.com', 'AgentricAI Admin', 'admin', '["admin", "basic_access"]');
+        VALUES ('admin-user', 'agentricaiuiux@gmail.com', 'AgentricAI Admin', 'admin', '["admin", "basic_access"]')
+      `);
     }
 
     // Create demo student
-    const studentExists = this.db.prepare('SELECT id FROM user_profiles WHERE email = ?').get('student@example.com');
+    const studentExists = this.db.exec('SELECT id FROM user_profiles WHERE email = "student@example.com"');
     
-    if (!studentExists) {
-      this.db.prepare(`
+    if (studentExists.length === 0) {
+      this.db.exec(`
         INSERT INTO user_profiles (id, email, name, role, permissions)
-        VALUES (?, ?, ?, ?, ?)
-      `).run('student-demo', 'student@example.com', 'Demo Student', 'student', '["basic_access"]');
+        VALUES ('student-demo', 'student@example.com', 'Demo Student', 'student', '["basic_access"]')
+      `);
     }
 
     // Seed initial knowledge base
     this.seedKnowledgeBase();
+    this.saveToLocalStorage();
     
     console.log('✅ SQLite database seeded with initial data');
   }
 
   private seedKnowledgeBase() {
+    if (!this.db) return;
+
     const knowledgeEntries = [
       {
         category: 'neurodiverse_learning',
@@ -242,45 +285,43 @@ export class SQLiteDatabase {
       }
     ];
 
-    const insertKnowledge = this.db.prepare(`
-      INSERT OR REPLACE INTO knowledge_base (id, category, key, value, source_agent, confidence_score)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
     for (const entry of knowledgeEntries) {
       const id = `${entry.category}:${entry.key}`;
-      insertKnowledge.run(id, entry.category, entry.key, entry.value, 'system', 1.0);
+      this.db.exec(`
+        INSERT OR REPLACE INTO knowledge_base (id, category, key, value, source_agent, confidence_score)
+        VALUES ('${id}', '${entry.category}', '${entry.key}', '${entry.value}', 'system', 1.0)
+      `);
     }
   }
 
   // User management
   async createUser(userData: any): Promise<any> {
+    await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
+
     const id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const stmt = this.db.prepare(`
+    this.db.exec(`
       INSERT INTO user_profiles (id, email, name, role, permissions)
-      VALUES (?, ?, ?, ?, ?)
+      VALUES ('${id}', '${userData.email}', '${userData.name || userData.email.split('@')[0]}', '${userData.role || 'student'}', '${JSON.stringify(userData.permissions || ['basic_access'])}')
     `);
-    
-    stmt.run(
-      id,
-      userData.email,
-      userData.name || userData.email.split('@')[0],
-      userData.role || 'student',
-      JSON.stringify(userData.permissions || ['basic_access'])
-    );
 
+    this.saveToLocalStorage();
     return { id, ...userData };
   }
 
   async getUserByEmail(email: string): Promise<any> {
+    await this.waitForInitialization();
+    if (!this.db) return null;
+
     const stmt = this.db.prepare('SELECT * FROM user_profiles WHERE email = ?');
-    const user = stmt.get(email);
+    const result = stmt.getAsObject([email]);
+    stmt.free();
     
-    if (user) {
+    if (result && Object.keys(result).length > 0) {
       return {
-        ...user,
-        permissions: JSON.parse(user.permissions || '["basic_access"]')
+        ...result,
+        permissions: JSON.parse((result.permissions as string) || '["basic_access"]')
       };
     }
     
@@ -288,13 +329,17 @@ export class SQLiteDatabase {
   }
 
   async getUserById(id: string): Promise<any> {
+    await this.waitForInitialization();
+    if (!this.db) return null;
+
     const stmt = this.db.prepare('SELECT * FROM user_profiles WHERE id = ?');
-    const user = stmt.get(id);
+    const result = stmt.getAsObject([id]);
+    stmt.free();
     
-    if (user) {
+    if (result && Object.keys(result).length > 0) {
       return {
-        ...user,
-        permissions: JSON.parse(user.permissions || '["basic_access"]')
+        ...result,
+        permissions: JSON.parse((result.permissions as string) || '["basic_access"]')
       };
     }
     
@@ -303,109 +348,108 @@ export class SQLiteDatabase {
 
   // Authentication logging
   async logAuthEvent(userId: string, event: string, email: string, metadata?: any): Promise<void> {
+    await this.waitForInitialization();
+    if (!this.db) return;
+
     const id = `auth-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const stmt = this.db.prepare(`
+    this.db.exec(`
       INSERT INTO auth_logs (id, user_id, event, email, ip_address, user_agent)
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES ('${id}', '${userId}', '${event}', '${email}', '${metadata?.ip_address || 'localhost'}', '${metadata?.user_agent || 'AgentricAI-App'}')
     `);
-    
-    stmt.run(
-      id,
-      userId,
-      event,
-      email,
-      metadata?.ip_address || 'localhost',
-      metadata?.user_agent || 'AgentricAI-App'
-    );
+
+    this.saveToLocalStorage();
   }
 
   // Agent management
   async createAgent(agentData: any): Promise<string> {
+    await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
+
     const id = agentData.id || `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const stmt = this.db.prepare(`
+    this.db.exec(`
       INSERT OR REPLACE INTO agents (id, name, type, status, config, memory_allocated)
-      VALUES (?, ?, ?, ?, ?, ?)
+      VALUES ('${id}', '${agentData.name}', '${agentData.type}', '${agentData.status || 'active'}', '${JSON.stringify(agentData.config || {})}', ${agentData.memory_allocated || 512})
     `);
-    
-    stmt.run(
-      id,
-      agentData.name,
-      agentData.type,
-      agentData.status || 'active',
-      JSON.stringify(agentData.config || {}),
-      agentData.memory_allocated || 512
-    );
 
+    this.saveToLocalStorage();
     return id;
   }
 
   async getAgents(): Promise<any[]> {
+    await this.waitForInitialization();
+    if (!this.db) return [];
+
     const stmt = this.db.prepare('SELECT * FROM agents ORDER BY created_at DESC');
-    const agents = stmt.all();
+    const results = [];
     
-    return agents.map(agent => ({
-      ...agent,
-      config: JSON.parse(agent.config || '{}')
-    }));
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      results.push({
+        ...row,
+        config: JSON.parse((row.config as string) || '{}')
+      });
+    }
+    
+    stmt.free();
+    return results;
   }
 
   async updateAgentStatus(agentId: string, status: string): Promise<void> {
-    const stmt = this.db.prepare('UPDATE agents SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
-    stmt.run(status, agentId);
+    await this.waitForInitialization();
+    if (!this.db) return;
+
+    this.db.exec(`UPDATE agents SET status = '${status}', updated_at = CURRENT_TIMESTAMP WHERE id = '${agentId}'`);
+    this.saveToLocalStorage();
   }
 
   // Knowledge base operations
   async storeKnowledge(category: string, key: string, value: any, sourceAgent?: string, confidence: number = 1.0): Promise<string> {
+    await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
+
     const id = `${category}:${key}`;
     
-    const stmt = this.db.prepare(`
+    this.db.exec(`
       INSERT OR REPLACE INTO knowledge_base 
       (id, category, key, value, confidence_score, source_agent, access_count, tags, relationships)
-      VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+      VALUES ('${id}', '${category}', '${key}', '${JSON.stringify(value)}', ${confidence}, '${sourceAgent || 'system'}', 0, '[]', '{}')
     `);
-    
-    stmt.run(
-      id,
-      category,
-      key,
-      JSON.stringify(value),
-      confidence,
-      sourceAgent || 'system',
-      JSON.stringify([]),
-      JSON.stringify({})
-    );
 
+    this.saveToLocalStorage();
     return id;
   }
 
   async retrieveKnowledge(category: string, key: string): Promise<any> {
-    const stmt = this.db.prepare(`
-      SELECT * FROM knowledge_base WHERE category = ? AND key = ?
-    `);
+    await this.waitForInitialization();
+    if (!this.db) return null;
+
+    const stmt = this.db.prepare('SELECT * FROM knowledge_base WHERE category = ? AND key = ?');
+    const result = stmt.getAsObject([category, key]);
     
-    const result = stmt.get(category, key);
-    
-    if (result) {
+    if (result && Object.keys(result).length > 0) {
       // Update access count
-      const updateStmt = this.db.prepare(`
-        UPDATE knowledge_base SET access_count = access_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?
-      `);
-      updateStmt.run(result.id);
+      this.db.exec(`UPDATE knowledge_base SET access_count = access_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = '${result.id}'`);
+      this.saveToLocalStorage();
       
+      stmt.free();
       return {
         ...result,
-        value: JSON.parse(result.value),
-        tags: JSON.parse(result.tags || '[]'),
-        relationships: JSON.parse(result.relationships || '{}')
+        value: JSON.parse(result.value as string),
+        tags: JSON.parse((result.tags as string) || '[]'),
+        relationships: JSON.parse((result.relationships as string) || '{}')
       };
     }
     
+    stmt.free();
     return null;
   }
 
   async queryKnowledge(searchTerm: string): Promise<any[]> {
+    await this.waitForInitialization();
+    if (!this.db) return [];
+
     const stmt = this.db.prepare(`
       SELECT * FROM knowledge_base 
       WHERE category LIKE ? OR key LIKE ? OR value LIKE ?
@@ -414,31 +458,43 @@ export class SQLiteDatabase {
     `);
     
     const searchPattern = `%${searchTerm}%`;
-    const results = stmt.all(searchPattern, searchPattern, searchPattern);
+    const results = [];
     
-    return results.map(result => ({
-      ...result,
-      value: JSON.parse(result.value),
-      tags: JSON.parse(result.tags || '[]'),
-      relationships: JSON.parse(result.relationships || '{}')
-    }));
+    stmt.bind([searchPattern, searchPattern, searchPattern]);
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      results.push({
+        ...row,
+        value: JSON.parse(row.value as string),
+        tags: JSON.parse((row.tags as string) || '[]'),
+        relationships: JSON.parse((row.relationships as string) || '{}')
+      });
+    }
+    
+    stmt.free();
+    return results;
   }
 
   // Agent memory operations
   async storeAgentMemory(agentId: string, memoryType: string, memoryData: any, priority: number = 5): Promise<string> {
+    await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
+
     const id = `memory-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const stmt = this.db.prepare(`
+    this.db.exec(`
       INSERT INTO agent_memory (id, agent_id, memory_type, memory_data, priority)
-      VALUES (?, ?, ?, ?, ?)
+      VALUES ('${id}', '${agentId}', '${memoryType}', '${JSON.stringify(memoryData)}', ${priority})
     `);
     
-    stmt.run(id, agentId, memoryType, JSON.stringify(memoryData), priority);
-    
+    this.saveToLocalStorage();
     return id;
   }
 
   async retrieveAgentMemory(agentId: string, memoryType?: string): Promise<any[]> {
+    await this.waitForInitialization();
+    if (!this.db) return [];
+
     let query = 'SELECT * FROM agent_memory WHERE agent_id = ?';
     const params = [agentId];
     
@@ -450,29 +506,41 @@ export class SQLiteDatabase {
     query += ' ORDER BY priority DESC, last_accessed DESC';
     
     const stmt = this.db.prepare(query);
-    const results = stmt.all(...params);
+    const results = [];
     
-    return results.map(result => ({
-      ...result,
-      memory_data: JSON.parse(result.memory_data)
-    }));
+    stmt.bind(params);
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      results.push({
+        ...row,
+        memory_data: JSON.parse(row.memory_data as string)
+      });
+    }
+    
+    stmt.free();
+    return results;
   }
 
   // Learning patterns
   async storeLearningPattern(userId: string, patternType: string, patternData: any, effectiveness: number = 0.5): Promise<string> {
+    await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
+
     const id = `pattern-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const stmt = this.db.prepare(`
+    this.db.exec(`
       INSERT INTO learning_patterns (id, user_id, pattern_type, pattern_data, effectiveness_score)
-      VALUES (?, ?, ?, ?, ?)
+      VALUES ('${id}', '${userId}', '${patternType}', '${JSON.stringify(patternData)}', ${effectiveness})
     `);
     
-    stmt.run(id, userId, patternType, JSON.stringify(patternData), effectiveness);
-    
+    this.saveToLocalStorage();
     return id;
   }
 
   async retrieveLearningPatterns(userId: string, patternType?: string): Promise<any[]> {
+    await this.waitForInitialization();
+    if (!this.db) return [];
+
     let query = 'SELECT * FROM learning_patterns WHERE user_id = ?';
     const params = [userId];
     
@@ -484,118 +552,151 @@ export class SQLiteDatabase {
     query += ' ORDER BY effectiveness_score DESC';
     
     const stmt = this.db.prepare(query);
-    const results = stmt.all(...params);
+    const results = [];
     
-    return results.map(result => ({
-      ...result,
-      pattern_data: JSON.parse(result.pattern_data)
-    }));
+    stmt.bind(params);
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      results.push({
+        ...row,
+        pattern_data: JSON.parse(row.pattern_data as string)
+      });
+    }
+    
+    stmt.free();
+    return results;
   }
 
   // User sessions
   async createUserSession(userId: string, agentId?: string): Promise<string> {
+    await this.waitForInitialization();
+    if (!this.db) throw new Error('Database not initialized');
+
     const id = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const stmt = this.db.prepare(`
+    this.db.exec(`
       INSERT INTO user_sessions (id, user_id, agent_id)
-      VALUES (?, ?, ?)
+      VALUES ('${id}', '${userId}', '${agentId || ''}')
     `);
     
-    stmt.run(id, userId, agentId);
-    
+    this.saveToLocalStorage();
     return id;
   }
 
   async updateUserSession(sessionId: string, updates: any): Promise<void> {
+    await this.waitForInitialization();
+    if (!this.db) return;
+
     const fields = [];
-    const values = [];
     
     if (updates.end_time) {
-      fields.push('end_time = ?');
-      values.push(updates.end_time);
+      fields.push(`end_time = '${updates.end_time}'`);
     }
     
     if (updates.activities_completed) {
-      fields.push('activities_completed = ?');
-      values.push(JSON.stringify(updates.activities_completed));
+      fields.push(`activities_completed = '${JSON.stringify(updates.activities_completed)}'`);
     }
     
     if (updates.adaptive_data) {
-      fields.push('adaptive_data = ?');
-      values.push(JSON.stringify(updates.adaptive_data));
+      fields.push(`adaptive_data = '${JSON.stringify(updates.adaptive_data)}'`);
     }
     
     if (updates.progress_score !== undefined) {
-      fields.push('progress_score = ?');
-      values.push(updates.progress_score);
+      fields.push(`progress_score = ${updates.progress_score}`);
     }
     
     if (fields.length > 0) {
-      values.push(sessionId);
-      const query = `UPDATE user_sessions SET ${fields.join(', ')} WHERE id = ?`;
-      const stmt = this.db.prepare(query);
-      stmt.run(...values);
+      const query = `UPDATE user_sessions SET ${fields.join(', ')} WHERE id = '${sessionId}'`;
+      this.db.exec(query);
+      this.saveToLocalStorage();
     }
   }
 
   // Activity logging
   async logActivity(agentId: string, activity: string, details: any): Promise<void> {
+    await this.waitForInitialization();
+    if (!this.db) return;
+
     const id = `activity-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
-    const stmt = this.db.prepare(`
+    this.db.exec(`
       INSERT INTO activity_logs (id, agent_id, activity, details)
-      VALUES (?, ?, ?, ?)
+      VALUES ('${id}', '${agentId}', '${activity}', '${JSON.stringify(details)}')
     `);
-    
-    stmt.run(id, agentId, activity, JSON.stringify(details));
+
+    this.saveToLocalStorage();
   }
 
   // Statistics and reporting
   async getSystemStats(): Promise<any> {
-    const agentCount = this.db.prepare('SELECT COUNT(*) as count FROM agents').get();
-    const activeAgents = this.db.prepare('SELECT COUNT(*) as count FROM agents WHERE status = "active"').get();
-    const userCount = this.db.prepare('SELECT COUNT(*) as count FROM user_profiles').get();
-    const knowledgeCount = this.db.prepare('SELECT COUNT(*) as count FROM knowledge_base').get();
+    await this.waitForInitialization();
+    if (!this.db) return { agents: { total: 0, active: 0 }, users: { total: 0 }, knowledge: { entries: 0 } };
+
+    const agentCount = this.db.exec('SELECT COUNT(*) as count FROM agents')[0]?.values[0][0] || 0;
+    const activeAgents = this.db.exec('SELECT COUNT(*) as count FROM agents WHERE status = "active"')[0]?.values[0][0] || 0;
+    const userCount = this.db.exec('SELECT COUNT(*) as count FROM user_profiles')[0]?.values[0][0] || 0;
+    const knowledgeCount = this.db.exec('SELECT COUNT(*) as count FROM knowledge_base')[0]?.values[0][0] || 0;
     
     return {
       agents: {
-        total: agentCount.count,
-        active: activeAgents.count
+        total: agentCount,
+        active: activeAgents
       },
       users: {
-        total: userCount.count
+        total: userCount
       },
       knowledge: {
-        entries: knowledgeCount.count
+        entries: knowledgeCount
       }
     };
   }
 
   async getRecentActivity(limit: number = 10): Promise<any[]> {
+    await this.waitForInitialization();
+    if (!this.db) return [];
+
     const stmt = this.db.prepare(`
       SELECT * FROM activity_logs 
       ORDER BY timestamp DESC 
       LIMIT ?
     `);
     
-    const results = stmt.all(limit);
+    const results = [];
+    stmt.bind([limit]);
     
-    return results.map(result => ({
-      ...result,
-      details: JSON.parse(result.details || '{}')
-    }));
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      results.push({
+        ...row,
+        details: JSON.parse((row.details as string) || '{}')
+      });
+    }
+    
+    stmt.free();
+    return results;
   }
 
   // Cleanup and maintenance
   close(): void {
-    this.db.close();
+    if (this.db) {
+      this.saveToLocalStorage();
+      this.db.close();
+    }
   }
 
   // Backup functionality
   backup(filename: string): void {
-    const backup = this.db.backup(filename);
-    backup.close();
-    console.log(`Database backed up to ${filename}`);
+    if (this.db) {
+      const data = this.db.export();
+      const blob = new Blob([data], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      console.log(`Database backed up to ${filename}`);
+    }
   }
 }
 
