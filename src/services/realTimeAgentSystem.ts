@@ -1,11 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
 import { v4 as uuidv4 } from 'uuid';
 import { agentricaiKnowledgeDB } from './knowledgeDatabase';
+import { sqliteDB } from './sqliteDatabase';
 
 // Real-time Agent Task Delegation System
 export class RealTimeAgentSystem {
-  private supabase: any;
-  private supabaseAdmin: any;
   private activeAgents: Map<string, AgentInstance> = new Map();
   private taskQueue: TaskQueue = new TaskQueue();
   private communicationHub: CommunicationHub = new CommunicationHub();
@@ -13,24 +11,6 @@ export class RealTimeAgentSystem {
   private isInitialized: boolean = false;
 
   constructor() {
-    // Regular client for user operations
-    this.supabase = createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY
-    );
-    
-    // Admin client for system operations (bypasses RLS)
-    this.supabaseAdmin = createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
-    
     this.initialize();
   }
 
@@ -61,39 +41,39 @@ export class RealTimeAgentSystem {
   private async deployAgentFleet() {
     const agentConfigs = [
       {
-        id: 'learning-coordinator',
+        id: 'learning-coordinator-' + Date.now(),
         name: 'Learning Coordinator',
-        type: 'educational-coordination',
+        type: 'learning-coordinator',
         capabilities: ['lesson-planning', 'progress-tracking', 'adaptive-content'],
         specialization: 'neurodiverse-learning',
         priority: 'critical'
       },
       {
-        id: 'behavior-analyst',
+        id: 'behavior-analyst-' + Date.now(),
         name: 'Behavior Pattern Analyst',
-        type: 'educational-support',
+        type: 'behavior-analyst',
         capabilities: ['pattern-recognition', 'behavioral-analysis', 'intervention-planning'],
         specialization: 'autism-support',
         priority: 'high'
       },
       {
-        id: 'content-generator',
+        id: 'content-generator-' + Date.now(),
         name: 'Adaptive Content Creator',
-        type: 'educational-curriculum',
+        type: 'content-generator',
         capabilities: ['content-creation', 'difficulty-adaptation', 'sensory-optimization'],
         specialization: 'accessible-content',
         priority: 'medium'
       },
       {
-        id: 'progress-monitor',
+        id: 'progress-monitor-' + Date.now(),
         name: 'Student Progress Monitor',
-        type: 'educational-student',
+        type: 'monitoring',
         capabilities: ['progress-tracking', 'assessment', 'reporting'],
         specialization: 'individual-monitoring',
         priority: 'high'
       },
       {
-        id: 'communication-router',
+        id: 'communication-router-' + Date.now(),
         name: 'Communication Router',
         type: 'communication-router',
         capabilities: ['message-routing', 'priority-handling', 'broadcast-management'],
@@ -101,7 +81,7 @@ export class RealTimeAgentSystem {
         priority: 'critical'
       },
       {
-        id: 'error-handler',
+        id: 'error-handler-' + Date.now(),
         name: 'Error Handler',
         type: 'error-handler',
         capabilities: ['error-detection', 'auto-recovery', 'user-notification'],
@@ -111,7 +91,7 @@ export class RealTimeAgentSystem {
     ];
 
     for (const config of agentConfigs) {
-      const agent = new AgentInstance(config, this.supabaseAdmin);
+      const agent = new AgentInstance(config);
       await agent.initialize();
       this.activeAgents.set(config.id, agent);
       console.log(`✅ Agent deployed: ${config.name}`);
@@ -216,11 +196,10 @@ class AgentInstance {
   public specialization: string;
   public priority: string;
   public status: 'initializing' | 'active' | 'processing' | 'idle' | 'error' = 'initializing';
-  private supabase: any;
   private taskHistory: Task[] = [];
   private efficiencyScore: number = 1.0;
 
-  constructor(config: any, supabase: any) {
+  constructor(config: any) {
     this.dbId = uuidv4();
     this.id = config.id;
     this.name = config.name;
@@ -228,35 +207,25 @@ class AgentInstance {
     this.capabilities = config.capabilities;
     this.specialization = config.specialization;
     this.priority = config.priority;
-    this.supabase = supabase;
   }
 
   async initialize() {
     // Register agent in database
-    if (this.supabase) {
-      try {
-        // Use insert instead of upsert to avoid conflicts
-        const { data, error } = await this.supabase.from('agents').insert({
-          id: this.dbId,
-          name: this.name,
-          type: this.type,
-          status: 'active',
-          config: {
-            capabilities: this.capabilities,
-            specialization: this.specialization,
-            priority: this.priority
-          },
-          memory_allocated: this.calculateMemoryNeeds(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-        
-        if (error && error.code !== '23505') { // Ignore duplicate key errors
-          throw error;
-        }
-      } catch (error) {
-        console.warn(`Failed to register agent ${this.id}:`, error);
-      }
+    try {
+      await sqliteDB.createAgent({
+        id: this.dbId,
+        name: this.name,
+        type: this.type,
+        status: 'active',
+        config: {
+          capabilities: this.capabilities,
+          specialization: this.specialization,
+          priority: this.priority
+        },
+        memory_allocated: this.calculateMemoryNeeds()
+      });
+    } catch (error) {
+      console.warn(`Failed to register agent ${this.id}:`, error);
     }
 
     this.status = 'active';

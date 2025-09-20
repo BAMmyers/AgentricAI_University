@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Brain, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+import { localAuth } from '../services/localAuthService';
 
 interface AuthPageProps {
   onAuthSuccess: (user: any, role: string) => void;
@@ -14,11 +14,6 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [ipBypass, setIpBypass] = useState(false);
-
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-  );
 
   // Check for IP bypass on component mount
   React.useEffect(() => {
@@ -73,96 +68,17 @@ export default function AuthPage({ onAuthSuccess }: AuthPageProps) {
     try {
       // Check for admin credentials first
       if (email === 'agentricaiuiux@gmail.com' && password === 'agentricaiADMIN') {
-        // Admin authentication - bypass Supabase for admin
-        const adminUser = {
-          id: 'admin-user',
-          email: 'agentricaiuiux@gmail.com',
-          user_metadata: { name: 'AgentricAI Admin' }
-        };
-        onAuthSuccess(adminUser, 'admin');
+        const { user, role } = await localAuth.signIn(email, password);
+        onAuthSuccess(user, role);
         return;
       }
 
       if (isSignIn) {
-        // Sign in
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        if (data.user) {
-          // All non-admin users are students
-          const role = 'student';
-          const { data: profile, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-
-          if (profileError) {
-            console.warn('Profile not found, creating default profile');
-            // Create student profile
-            const { data: newProfile } = await supabase
-              .from('user_profiles')
-              .insert({
-                id: data.user.id,
-                email: data.user.email,
-                name: data.user.user_metadata?.name || email.split('@')[0],
-                role: 'student',
-                permissions: ['basic_access']
-              })
-              .select()
-              .single();
-
-            onAuthSuccess(data.user, 'student');
-          } else {
-            onAuthSuccess(data.user, 'student');
-          }
-
-          // Log authentication
-          await supabase.from('auth_logs').insert({
-            user_id: data.user.id,
-            event: 'sign_in',
-            email: data.user.email,
-            timestamp: new Date().toISOString()
-          });
-        }
+        const { user, role } = await localAuth.signIn(email, password);
+        onAuthSuccess(user, role);
       } else {
-        // Sign up
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name: name
-            }
-          }
-        });
-
-        if (error) throw error;
-
-        if (data.user) {
-          // Create student profile (all signups are students)
-          await supabase.from('user_profiles').insert({
-            id: data.user.id,
-            email: data.user.email,
-            name: name,
-            role: 'student',
-            permissions: ['basic_access']
-          });
-
-          // Log authentication
-          await supabase.from('auth_logs').insert({
-            user_id: data.user.id,
-            event: 'sign_up',
-            email: data.user.email,
-            timestamp: new Date().toISOString()
-          });
-
-          onAuthSuccess(data.user, 'student');
-        }
+        const { user, role } = await localAuth.signUp(email, password, name);
+        onAuthSuccess(user, role);
       }
     } catch (error: any) {
       console.error('Authentication error:', error);

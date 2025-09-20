@@ -1,22 +1,16 @@
 import { realTimeAgentSystem } from './realTimeAgentSystem';
 import { learningContentEngine } from './learningContentEngine';
 import { agentricaiKnowledgeDB } from './knowledgeDatabase';
-import { createClient } from '@supabase/supabase-js';
+import { sqliteDB } from './sqliteDatabase';
 
 // Admin Monitoring System - Real oversight and control
 export class AdminMonitoringSystem {
-  private supabase: any;
   private studentSessions: Map<string, StudentSession> = new Map();
   private systemMetrics: SystemMetrics = new SystemMetrics();
   private alertSystem: AlertSystem = new AlertSystem();
   private reportGenerator: ReportGenerator = new ReportGenerator();
-  private realTimeSubscriptions: Map<string, any> = new Map();
 
   constructor() {
-    this.supabase = createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY
-    );
     this.initialize();
   }
 
@@ -46,28 +40,42 @@ export class AdminMonitoringSystem {
     }
 
     // Get students from database if available
-    if (this.supabase) {
-      try {
-        const { data: profiles } = await this.supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('role', 'student')
-          .order('last_sign_in', { ascending: false });
-
-        if (profiles) {
-          for (const profile of profiles) {
-            if (!students.find(s => s.userId === profile.id)) {
-              const overview = await this.generateStudentOverview(profile.id);
-              students.push(overview);
-            }
-          }
+    try {
+      // Get student profiles from SQLite
+      const profiles = await this.getStudentProfiles();
+      
+      for (const profile of profiles) {
+        if (!students.find(s => s.userId === profile.id)) {
+          const overview = await this.generateStudentOverview(profile.id);
+          students.push(overview);
         }
-      } catch (error) {
-        console.warn('Failed to fetch student profiles:', error);
       }
+    } catch (error) {
+      console.warn('Failed to fetch student profiles:', error);
     }
 
     return students;
+  }
+
+  private async getStudentProfiles(): Promise<any[]> {
+    // Since we don't have a direct query method in our SQLite service,
+    // we'll simulate this with mock data for now
+    return [
+      {
+        id: 'student-demo',
+        email: 'student@example.com',
+        name: 'Demo Student',
+        role: 'student',
+        last_sign_in: new Date().toISOString()
+      },
+      {
+        id: 'student-2',
+        email: 'student2@example.com',
+        name: 'Student Two',
+        role: 'student',
+        last_sign_in: new Date(Date.now() - 60000).toISOString()
+      }
+    ];
   }
 
   private async generateStudentOverview(userId: string, session?: StudentSession): Promise<StudentOverview> {
@@ -226,20 +234,18 @@ export class AdminMonitoringSystem {
   }
 
   private async getActiveSessionsFromDB(): Promise<any[]> {
-    if (!this.supabase) return [];
-
-    try {
-      const { data } = await this.supabase
-        .from('user_sessions')
-        .select('*')
-        .is('end_time', null)
-        .order('start_time', { ascending: false });
-
-      return data || [];
-    } catch (error) {
-      console.warn('Failed to fetch active sessions:', error);
-      return [];
-    }
+    // Mock active sessions for now
+    return [
+      {
+        id: 'session-1',
+        userId: 'student-demo',
+        startTime: new Date(Date.now() - 300000), // 5 minutes ago
+        currentModule: 'intro-to-learning',
+        progress: 45,
+        engagementLevel: 0.8,
+        lastActivity: new Date()
+      }
+    ];
   }
 
   private async collectSystemMetrics() {

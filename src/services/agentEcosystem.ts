@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { agentricaiKnowledgeDB } from './knowledgeDatabase';
+import { sqliteDB } from './sqliteDatabase';
 
 // Self-Evolving Agent Ecosystem Service - Inspired by your revolutionary architecture
 export class StealthAgentEcosystem {
@@ -10,20 +10,6 @@ export class StealthAgentEcosystem {
   private workflowOrchestrator: any;
 
   constructor() {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    // Check for missing or placeholder values
-    const isPlaceholderUrl = !supabaseUrl || supabaseUrl === 'your-project.supabase.co' || supabaseUrl.includes('your-project');
-    const isPlaceholderKey = !supabaseKey || supabaseKey === 'your-anon-key' || supabaseKey.length < 50;
-    
-    if (isPlaceholderUrl || isPlaceholderKey) {
-      console.warn('Supabase credentials not configured. Running in demo mode.');
-      // Create a mock client for demo purposes
-      this.supabase = null;
-    } else {
-      this.supabase = createClient(supabaseUrl, supabaseKey);
-    }
     this.initializeStealthEcosystem();
   }
 
@@ -136,32 +122,20 @@ export class StealthAgentEcosystem {
       const agentId = agentSpec.id || `agent_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       const registrationData = {
-        agent_id: agentId,
+        id: agentId,
         name: agentSpec.name,
         type: agentSpec.type,
-        capabilities: agentSpec.capabilities || [],
         status: 'initializing',
-        memory_allocation: agentSpec.memoryAllocation || '256MB',
-        specialized_for: agentSpec.specializedFor || 'general',
-        stealth_config: agentSpec.stealthConfig || {},
-        created_at: new Date().toISOString(),
-        last_activity: new Date().toISOString()
+        config: {
+          capabilities: agentSpec.capabilities || [],
+          specialization: agentSpec.specializedFor || 'general',
+          stealth_config: agentSpec.stealthConfig || {}
+        },
+        memory_allocated: parseInt(agentSpec.memoryAllocation?.replace('MB', '') || '256')
       };
 
-      if (this.supabase) {
-        const { data, error } = await this.supabase
-          .from('stealth_agent_registry')
-          .insert(registrationData);
-        
-        if (error) {
-          console.warn('Supabase registration failed, using local registry:', error.message);
-          this.localAgentRegistry.set(agentId, registrationData);
-        } else {
-          console.log(`Agent ${agentId} registered successfully in Supabase`);
-        }
-      } else {
-        this.localAgentRegistry.set(agentId, registrationData);
-      }
+      await sqliteDB.createAgent(registrationData);
+      console.log(`Agent ${agentId} registered successfully in SQLite`);
       
       // Log the registration
       await this.logActivity(agentId, 'agent_registered', {
@@ -172,60 +146,6 @@ export class StealthAgentEcosystem {
       return agentId;
     } catch (error) {
       console.warn('Agent registration failed, using fallback:', error);
-      const fallbackId = `local_agent_${Date.now()}`;
-      this.localAgentRegistry.set(fallbackId, {
-        agent_id: fallbackId,
-        name: agentSpec.name || 'Unknown Agent',
-        type: agentSpec.type || 'general',
-        capabilities: agentSpec.capabilities || [],
-        status: 'local_mode',
-        created_at: new Date().toISOString()
-      });
-      return fallbackId;
-    }
-  }
-
-  private async registerAgent(agentConfig: any) {
-    try {
-      if (!this.supabase) {
-        // Demo mode - just log the agent registration
-        console.log('Demo mode: Agent registered:', agentConfig.name);
-        return { id: agentConfig.id };
-      }
-      
-      const { data, error } = await this.supabase
-        .from('stealth_agent_registry')
-        .upsert({
-          agent_id: agentConfig.id,
-          name: agentConfig.name,
-          type: agentConfig.type,
-          capabilities: agentConfig.capabilities,
-          status: agentConfig.status,
-          memory_allocation: agentConfig.memory_allocation,
-          specialized_for: agentConfig.specialized_for,
-          stealth_config: agentConfig.stealth_config,
-          created_at: new Date().toISOString(),
-          last_activity: new Date().toISOString()
-        }, {
-          onConflict: 'agent_id'
-        });
-
-      if (error) throw error;
-      
-      // Log agent deployment
-      await this.logAgentActivity(agentConfig.id, 'DEPLOYED', {
-        message: `Stealth agent ${agentConfig.name} deployed successfully`,
-        capabilities: agentConfig.capabilities
-      });
-
-      return data;
-    } catch (error) {
-      console.error('Failed to register stealth agent:', error);
-      // In demo mode, don't throw errors for registration failures
-      if (!this.supabase) {
-        console.log('Demo mode: Continuing despite registration error');
-        return { id: agentConfig.id };
-      }
       throw error;
     }
   }
@@ -294,34 +214,16 @@ export class StealthAgentEcosystem {
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
     try {
-      if (!this.supabase) {
-        // Demo mode - just log the message
-        console.log('Demo mode: Agent message sent:', { fromAgentId, toAgentId, message });
-        
-        // Store in knowledge base for agent learning
-        await agentricaiKnowledgeDB.storeAgentMemory(fromAgentId, 'communication', {
-          to: toAgentId,
-          message,
-          priority,
-          timestamp: new Date().toISOString()
-        }, priority === 'critical' ? 10 : priority === 'high' ? 7 : 5);
-        
-        return messageId;
-      }
+      // Log the message
+      console.log('Agent message sent:', { fromAgentId, toAgentId, message });
       
-      const { data, error } = await this.supabase
-        .from('stealth_agent_communications')
-        .insert({
-          message_id: messageId,
-          from_agent_id: fromAgentId,
-          to_agent_id: toAgentId,
-          message_content: message,
-          priority,
-          status: 'sent',
-          created_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
+      // Store in knowledge base for agent learning
+      await agentricaiKnowledgeDB.storeAgentMemory(fromAgentId, 'communication', {
+        to: toAgentId,
+        message,
+        priority,
+        timestamp: new Date().toISOString()
+      }, priority === 'critical' ? 10 : priority === 'high' ? 7 : 5);
 
       // Route message through knowledge base if needed
       if (message.type === 'knowledge_update') {
@@ -524,43 +426,8 @@ export class StealthAgentEcosystem {
     const processingCount = agents.filter(a => a.status === 'processing').length;
     const idleCount = agents.filter(a => a.status === 'idle').length;
 
-    if (!this.supabase) {
-      // Demo mode - return mock data
-      return {
-        ecosystem_health: 'optimal',
-        agent_status: {
-          total: agents.length,
-          active: activeCount,
-          processing: processingCount,
-          idle: idleCount
-        },
-        communication_activity: {
-          recent_messages: 5,
-          avg_response_time: '120ms'
-        },
-        knowledge_base: {
-          total_entries: 42,
-          categories: 4
-        },
-        agentricai_metrics: {
-          panel_efficiency: '94%',
-          neon_system_status: 'optimal',
-          rivet_integrity: '100%'
-        }
-      };
-    }
-
-    // Get recent communications
-    const { data: recentComms } = await this.supabase
-      .from('stealth_agent_communications')
-      .select('*')
-      .gte('created_at', new Date(Date.now() - 60000).toISOString())
-      .order('created_at', { ascending: false });
-
-    // Get knowledge base size
-    const { count: knowledgeCount } = await this.supabase
-      .from('agentricai_knowledge_base')
-      .select('*', { count: 'exact', head: true });
+    // Get system stats from SQLite
+    const stats = await sqliteDB.getSystemStats();
 
     return {
       ecosystem_health: 'optimal',
@@ -571,11 +438,11 @@ export class StealthAgentEcosystem {
         idle: idleCount
       },
       communication_activity: {
-        recent_messages: recentComms?.length || 0,
+        recent_messages: 5, // Simulated
         avg_response_time: '120ms'
       },
       knowledge_base: {
-        total_entries: knowledgeCount || 0,
+        total_entries: stats.knowledge.entries,
         categories: Array.from(new Set(Array.from(this.knowledgeBase.keys()).map(k => k.split(':')[0]))).length
       },
       agentricai_metrics: {
@@ -588,60 +455,37 @@ export class StealthAgentEcosystem {
 
   // Utility methods for logging and analysis
   private async logAgentActivity(agentId: string, activity: string, details: any) {
-    if (!this.supabase) {
-      console.log('Demo mode: Agent activity logged locally:', { agentId, activity, details });
-      return null;
-    }
-    
-    try {
-      return await this.supabase
-        .from('agentricai_activity_logs')
-        .insert({
-          agent_id: agentId,
-          activity,
-          details,
-          timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-      console.warn('Failed to log agent activity to Supabase:', error);
-      return null;
-    }
+    await sqliteDB.logActivity(agentId, activity, details);
+  }
+
+  private async logActivity(agentId: string, activity: string, details: any) {
+    await sqliteDB.logActivity(agentId, activity, details);
   }
 
   private async logAgentCreation(agent: any, taskRequirement: any) {
-    return this.supabase
-      .from('agentricai_agent_creation_history')
-      .insert({
-        agent_id: agent.id,
-        created_for_task: taskRequirement,
-        agent_spec: agent,
-        created_at: new Date().toISOString()
-      });
+    await sqliteDB.logActivity(agent.id, 'agent_created', {
+      created_for_task: taskRequirement,
+      agent_spec: agent
+    });
   }
 
   private async logErrorAnalysis(error: Error, analysis: any, explanation: string, fix: any) {
-    return this.supabase
-      .from('agentricai_error_analysis')
-      .insert({
-        error_type: error.name,
-        error_message: error.message,
-        analysis,
-        explanation,
-        proposed_fix: fix,
-        timestamp: new Date().toISOString()
-      });
+    await sqliteDB.logActivity('error-handler', 'error_analysis', {
+      error_type: error.name,
+      error_message: error.message,
+      analysis,
+      explanation,
+      proposed_fix: fix
+    });
   }
 
   private async logWorkflowExecution(workflowId: string, type: string, status: string, data: any) {
-    return this.supabase
-      .from('agentricai_workflow_logs')
-      .insert({
-        workflow_id: workflowId,
-        workflow_type: type,
-        status,
-        execution_data: data,
-        timestamp: new Date().toISOString()
-      });
+    await sqliteDB.logActivity('workflow-orchestrator', 'workflow_execution', {
+      workflow_id: workflowId,
+      workflow_type: type,
+      status,
+      execution_data: data
+    });
   }
 
   // Helper methods for analysis

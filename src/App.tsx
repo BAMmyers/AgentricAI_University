@@ -4,7 +4,7 @@ import StudentDashboard from './components/StudentDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import { realTimeAgentSystem } from './services/realTimeAgentSystem';
 import { adminMonitoringSystem } from './services/adminMonitoringSystem';
-import { createClient } from '@supabase/supabase-js';
+import { localAuth } from './services/localAuthService';
 
 function App() {
   const [user, setUser] = useState<any>(null);
@@ -12,30 +12,16 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [agentsActivated, setAgentsActivated] = useState(false);
 
-  const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-  );
-
   useEffect(() => {
     // Check for existing session
     const checkSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const session = localAuth.getSession();
         
         if (session?.user) {
-          // Get user profile
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profile) {
-            setUser(session.user);
-            setUserRole(profile.role);
-            await initializeAgentricAISystem();
-          }
+          setUser(session.user);
+          setUserRole(session.user.role);
+          await initializeAgentricAISystem();
         }
       } catch (error) {
         console.error('Session check failed:', error);
@@ -47,7 +33,7 @@ function App() {
     checkSession();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const unsubscribe = localAuth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         setUser(null);
         setUserRole(null);
@@ -56,7 +42,7 @@ function App() {
     });
 
     return () => {
-      subscription.unsubscribe();
+      unsubscribe();
     };
   }, []);
 
@@ -101,7 +87,7 @@ function App() {
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await localAuth.signOut();
       setUser(null);
       setUserRole(null);
       setAgentsActivated(false);
